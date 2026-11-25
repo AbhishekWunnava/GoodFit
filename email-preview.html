@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GoodFit – email preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Latin:wdth,wght@75..125,300..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="wrap">
+  <nav class="top">
+    <a class="logo" href="index.html"><span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>GoodFit</a>
+    <div class="nav-tabs">
+      <a href="jobs.html">Matches</a>
+      <a href="jobs.html#saved">Saved</a>
+      <a href="questions.html">Questions</a>
+      <a href="dashboard.html?edit=preferences">Profile</a>
+    </div>
+    <div class="user-chip">
+      <span class="avatar" id="avatar" aria-hidden="true"></span>
+    </div>
+  </nav>
+
+  <main class="preview">
+    <header class="q-head">
+      <h1>Your email, previewed</h1>
+      <p id="intro">This is what your match email would look like right now, built from your saved profile and today's jobs. Nothing is sent from this page.</p>
+    </header>
+    <div class="preview-bar">
+      <div class="opts" role="group" aria-label="Which email">
+        <label class="opt"><input type="radio" name="freq" value="weekly" checked><span>Weekly</span></label>
+        <label class="opt"><input type="radio" name="freq" value="daily"><span>Daily</span></label>
+      </div>
+      <p class="small" id="status" aria-live="polite">Loading your matches…</p>
+    </div>
+    <div class="preview-mail">
+      <p class="preview-subject"><span class="small">Subject</span><b id="subject"></b></p>
+      <iframe id="frame" title="Email preview" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
+    </div>
+  </main>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script src="roles.js"></script>
+<script src="ui.js"></script>
+<script src="signals.js"></script>
+<script src="matching.js"></script>
+<script src="jobs-data.js"></script>
+<script src="report.js"></script>
+<script>
+const P = { details: {}, prefs: {}, jobs: [], hidden: new Set() };
+
+function show() {
+  const frequency = document.querySelector('input[name="freq"]:checked').value;
+  const r = Report.build({
+    jobs: P.jobs, details: P.details, prefs: P.prefs, frequency, hidden: P.hidden,
+    siteUrl: location.href.replace(/\/[^/]*$/, ""),
+  });
+  $("subject").textContent = r.subject;
+  $("frame").srcdoc = r.html;
+  const on = P.prefs.report && P.prefs.report !== "off";
+  $("status").innerHTML = `${esc(Matcher.plural(r.matches, "match"))} from ${esc(Matcher.plural(r.newProduct, "new product role"))} since ${esc(new Date(r.since).toLocaleDateString(undefined, { day: "numeric", month: "short" }))}. ` +
+    (on ? `Your emails are on: <b>${esc(P.prefs.report)}</b>.` : `Your emails are off. <a href="dashboard.html?edit=preferences">Turn them on in Preferences</a>.`);
+}
+
+async function init() {
+  const { data } = await db.auth.getSession();
+  if (!data.session) { location.href = "auth.html"; return; }
+  const user = data.session.user;
+  $("avatar").textContent = (user.email || "?")[0].toUpperCase();
+  const { data: profile } = await db.from("profiles").select("*").maybeSingle();
+  if (!profile || profile.step !== "review") { location.replace("dashboard.html"); return; }
+  P.details = profile.details || {};
+  P.prefs = profile.preferences || {};
+  try { P.hidden = new Set((JSON.parse(localStorage.getItem(`jobpilot_jobs_${user.id}`) || "{}").hidden) || []); } catch {}
+  const d = await JobsData.loadJobs();
+  P.jobs = Matcher.prepare(d.jobs);
+  if (P.prefs.report === "daily") document.querySelector('input[value="daily"]').checked = true;
+  document.querySelectorAll('input[name="freq"]').forEach((r) => (r.onchange = show));
+  show();
+  // Size the frame to the email (shrink first, so switching Weekly/Daily doesn't keep growing it).
+  $("frame").onload = () => {
+    const f = $("frame"), doc = f.contentDocument;
+    if (!doc) return;
+    f.style.height = "100px";
+    f.style.height = doc.documentElement.scrollHeight + 8 + "px";
+  };
+}
+init().catch((e) => { console.error(e); $("status").textContent = "Couldn't build the preview: " + e.message; });
+</script>
+</body>
+</html>
