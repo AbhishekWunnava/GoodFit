@@ -27,6 +27,7 @@
     <div class="nav-tabs" role="tablist">
       <a href="jobs.html" class="on" id="tab-matches">Matches</a>
       <a href="jobs.html#saved" id="tab-saved">Saved</a>
+      <a href="questions.html">Questions</a>
       <a href="dashboard.html?edit=review">Profile</a>
     </div>
     <div class="user-chip">
@@ -44,13 +45,20 @@
       <div class="right">
         <button class="btn ghost sm filters-toggle" id="open-filters"></button>
         <label class="sr-only" for="sort">Sort by</label>
-        <select id="sort"><option value="best">Best match</option><option value="newest">Newest first</option></select>
+        <select id="sort">
+          <option value="best">Best match</option>
+          <option value="newest">Newest first</option>
+          <option value="exp-asc">Experience asked: low to high</option>
+          <option value="exp-desc">Experience asked: high to low</option>
+          <option value="company">Company A–Z</option>
+        </select>
       </div>
     </div>
 
     <div class="jobs-layout">
       <aside class="card filters" id="filters" aria-label="Filters"></aside>
       <section>
+        <div class="list-bar" id="list-bar"></div>
         <div class="job-list" id="list"></div>
         <div class="lowfit" id="more"></div>
       </section>

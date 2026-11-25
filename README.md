@@ -20,6 +20,16 @@ Plain HTML/CSS/JS. No install, no build. Free tools only.
    detail panel with the full description and an "Apply on <company>'s site" link. Save jobs, or mark
    them "Not interested" (with Undo). "Save as my preferences" writes the filters back to the profile.
    Once onboarding is done, logging in goes straight to Matches; Profile opens the onboarding to edit.
+   Match highlights: in a job's detail panel, the description marks the words that match your profile
+   (teal: your industry and space, B2B/B2C, regulations, skills, cities, years asked that you meet) and
+   possible gaps (amber: must-have terms you may lack, years you're short of). Each must-have and
+   preferred line is tagged "you have this" / "you may not have this", and reasons in "How it fits you"
+   have a Show link that jumps to the evidence. A Highlight switch turns it off (remembered in the browser).
+   (`Matcher.evidence()` decides what to mark; `Signals.vocab()` lists the terms.)
+   List tools: pages (10 / 20 / 50 / 100 per page), sort by best match, newest, experience asked
+   (low→high, high→low) or company A–Z (sort and page size are remembered in the browser), "Show / Hide
+   lower-fit jobs", a Hidden view (#hidden) to bring back jobs marked "Not interested", and "Download
+   list" on Saved, which saves a .csv for Excel or Google Sheets.
 
 ### Where the jobs come from
 With Supabase set up, jobs live in the `jobs` table. Every morning (06:00 India time) the `fetch-jobs`
@@ -58,11 +68,13 @@ Score out of 100, in six parts (the fit bar), each point with a reason:
 | Practical | 7 | location and work mode 5 + pay and notice 2 |
 
 Unknown counts as 70% of a part, not zero. Serious mismatches don't hide a job; they cap its score below
-the 50 "good match" line and the reason is shown first: not a product role (25), really a PO / delivery /
+the 50 "good match" line and the reason is shown first: really a PO / delivery /
 BA role (40), not in your cities and not open to relocating (40), missing a must-have regulation or
 specific space (45), 2+ years short of the years asked (45), likely below your level (55). Each job also
 gets a confidence (high / medium / low); "Limited info" jobs (short or search-engine previews) rank below
-equal scores with full descriptions. Filters (job type, work mode, company size, industry, keywords to
+equal scores with full descriptions. Only product roles are shown at all (a PM-type title: Product
+Manager / Owner / Lead / Head, APM, SPM, GPM, Director or VP of Product); other jobs are left out.
+Filters (job type, work mode, company size, industry, keywords to
 avoid, posted date, search, exact titles) still remove jobs outright. Jobs scoring under 50 are behind a
 "lower-fit" button.
 
@@ -170,6 +182,10 @@ and duplicates are removed. Results are short previews; "See the full job" opens
 - `dashboard.html` + `dashboard.js` onboarding (login required)
 - `supabase/functions/parse-resume/index.ts` server function that reads a resume with Claude
 - `jobs.html` + `jobs.js` the Matches page; `matching.js` filters and the V1 score (six parts, caps, confidence); `jobs.json` job snapshot
+- `questions.html` + `questions.js` + `questions-data.js` common questions for PM job seekers (static content):
+  screening and HR (CTC, notice period), product sense, execution and metrics, strategy and estimation,
+  leadership, technical and domain, and questions to ask. Search, category filter, "practised" ticks saved in the browser.
+  Works logged in or out; linked from the Matches tabs and the landing page.
 - `ui.js` shared UI pieces (chips, option pills, icons, toast, and the fit bar `fitBar()` / `fitList()`)
 - `signals.js` rules that read job descriptions and resumes for matching (archetype, B2B/B2C, verticals, must-haves…)
 - `resume-parser.js` rules-based fallback reader (PDF/.docx) + years-of-experience maths

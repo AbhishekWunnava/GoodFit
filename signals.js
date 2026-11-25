@@ -269,8 +269,25 @@ window.Signals = (() => {
     };
   }
 
+  // Every term the rules look for, with the key it stands for, so a page can highlight them in a description.
+  // kind "specific" = a domain, business model or regulation (worth showing anywhere in the text);
+  // kind "generic" = a skill or practice (only shown inside requirement lines, where it means something).
+  let VOCAB = null;
+  function vocab() {
+    if (VOCAB) return VOCAB;
+    VOCAB = [];
+    for (const [v, def] of Object.entries(VERTICALS)) {
+      VOCAB.push({ key: `v:${v}`, words: def.words, kind: "specific", label: v });
+      for (const [sub, words] of Object.entries(def.subs || {})) VOCAB.push({ key: `sv:${v}: ${sub}`, words, kind: "specific", label: `${v}: ${sub}` });
+    }
+    for (const [m, w] of Object.entries(MODELS)) VOCAB.push({ key: `model:${m}`, words: w.strong, kind: "specific", label: m });
+    for (const [r, words] of Object.entries(REGULATORY)) VOCAB.push({ key: `reg:${r}`, words, kind: "specific", label: r });
+    for (const [k, words] of Object.entries(CONCEPTS)) if (!["b2b", "b2c"].includes(k)) VOCAB.push({ key: k, words, kind: "generic", label: k });
+    return VOCAB;
+  }
+
   return {
-    extractJob, fromResume, conceptsIn, requirementLists,
+    extractJob, fromResume, conceptsIn, requirementLists, vocab,
     VERTICALS, ADJACENT, MODELS: Object.keys(MODELS),
     SUB_VERTICALS: Object.entries(VERTICALS).flatMap(([v, d]) => Object.keys(d.subs || {}).map((s) => `${v}: ${s}`)),
     VERTICAL_NAMES: Object.keys(VERTICALS),
