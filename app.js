@@ -116,6 +116,10 @@ function makeDemoDb() {
       async signUp({ email }) { return { data: { session: startSession(email) }, error: null }; },
       async signInWithPassword({ email }) { startSession(email); return { error: null }; },
       async signOut() { try { localStorage.removeItem(KEY_SESSION); } catch {} return { error: null }; },
+      // Password reset: demo accounts have no real passwords, so nothing is emailed and any new password is accepted.
+      async resetPasswordForEmail() { return { data: {}, error: null }; },
+      async updateUser() { return session() ? { data: { user: session().user }, error: null } : { data: null, error: { message: "Please log in again." } }; },
+      onAuthStateChange() { return { data: { subscription: { unsubscribe() {} } } }; },
     },
     from: table,
     storage: {
