@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GoodFit – set up your job search</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Latin:wdth,wght@75..125,300..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="wrap">
+  <nav class="top">
+    <a class="logo" href="index.html"><span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>GoodFit</a>
+    <div class="user-chip">
+      <span class="avatar" id="avatar" aria-hidden="true"></span>
+      <span class="email" id="who"></span>
+      <button class="btn ghost sm" id="logout">Log out</button>
+    </div>
+  </nav>
+
+  <main>
+    <div id="loading" class="loading-page"><div class="spinner"></div><span>Loading your workspace…</span></div>
+    <div id="app" class="hide">
+      <section class="welcome" id="welcome" aria-live="polite"></section>
+      <ol class="stepper" id="stepper" aria-label="Setup progress"></ol>
+      <div class="layout" id="layout">
+        <div id="panel"></div>
+        <aside class="side" id="side"></aside>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script src="roles.js"></script>
+<script src="ui.js"></script>
+<script src="signals.js"></script>
+<script src="resume-parser.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

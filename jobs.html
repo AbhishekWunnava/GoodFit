@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GoodFit – your matches</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Latin:wdth,wght@75..125,300..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<!-- "We're finding jobs" loader -->
+<div class="finder" id="finder" role="status" aria-live="polite">
+  <div class="finder-box">
+    <h1 id="finder-title">We're finding jobs for you</h1>
+    <p>This takes a few seconds.</p>
+    <div id="finder-fit" aria-hidden="true"></div>
+    <ul id="finder-steps"></ul>
+  </div>
+</div>
+
+<div class="wrap">
+  <nav class="top">
+    <a class="logo" href="index.html"><span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>GoodFit</a>
+    <div class="nav-tabs" role="tablist">
+      <a href="jobs.html" class="on" id="tab-matches">Matches</a>
+      <a href="jobs.html#saved" id="tab-saved">Saved</a>
+      <a href="dashboard.html?edit=review">Profile</a>
+    </div>
+    <div class="user-chip">
+      <span class="avatar" id="avatar" aria-hidden="true"></span>
+      <button class="btn ghost sm" id="logout">Log out</button>
+    </div>
+  </nav>
+
+  <main id="main" class="hide">
+    <div class="jobs-head">
+      <div>
+        <h1 id="headline"></h1>
+        <p id="subline"></p>
+      </div>
+      <div class="right">
+        <button class="btn ghost sm filters-toggle" id="open-filters"></button>
+        <label class="sr-only" for="sort">Sort by</label>
+        <select id="sort"><option value="best">Best match</option><option value="newest">Newest first</option></select>
+      </div>
+    </div>
+
+    <div class="jobs-layout">
+      <aside class="card filters" id="filters" aria-label="Filters"></aside>
+      <section>
+        <div class="job-list" id="list"></div>
+        <div class="lowfit" id="more"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="drawer-bg" id="drawer-bg"></div>
+<aside class="drawer" id="drawer" aria-label="Job details" aria-hidden="true"></aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script src="roles.js"></script>
+<script src="ui.js"></script>
+<script src="signals.js"></script>
+<script src="matching.js"></script>
+<script src="jobs.js"></script>
+</body>
+</html>

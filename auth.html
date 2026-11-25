@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GoodFit – sign up or log in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Latin:wdth,wght@75..125,300..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="auth">
+  <aside class="auth-side">
+    <a class="logo" href="index.html"><span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>GoodFit</a>
+    <div class="pitch">
+      <h2>Three minutes to your first shortlist.</h2>
+      <ol>
+        <li><div><b>Upload your resume</b><span>We read your role, company and experience for you.</span></div></li>
+        <li><div><b>Tell us what you want</b><span>Roles, cities, pay, company type and more.</span></div></li>
+        <li><div><b>See the jobs that fit</b><span>Each one scored out of 100, with the reasons.</span></div></li>
+      </ol>
+      <p class="quote">Your resume stays private to you. Nothing is ever sent without your OK.</p>
+    </div>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-box">
+      <a class="logo auth-mobile-logo" href="index.html"><span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>GoodFit</a>
+      <h1 id="title"></h1>
+      <p class="sub" id="subtitle"></p>
+
+      <div class="tabs" role="tablist">
+        <button class="tab" id="tab-signup" role="tab" type="button">Create account</button>
+        <button class="tab" id="tab-login" role="tab" type="button">Log in</button>
+      </div>
+
+      <form id="form" novalidate>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" required autocomplete="email" placeholder="you@example.com">
+        </div>
+        <div class="field">
+          <label for="password">Password <span class="hint" id="pw-hint">(at least 8 characters)</span></label>
+          <div class="pw">
+            <input type="password" id="password" required minlength="8" autocomplete="current-password">
+            <button type="button" id="pw-toggle" aria-label="Show password">Show</button>
+          </div>
+        </div>
+        <button class="btn lg block" id="submit"></button>
+      </form>
+      <div id="msg" class="msg"></div>
+      <p class="small auth-fine">By continuing you agree that GoodFit will never submit an application without your approval.</p>
+    </div>
+  </main>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+let mode = new URLSearchParams(location.search).get("mode") === "signup" ? "signup" : "login";
+const $ = (id) => document.getElementById(id);
+
+function render() {
+  const signup = mode === "signup";
+  $("tab-signup").classList.toggle("on", signup);
+  $("tab-login").classList.toggle("on", !signup);
+  $("tab-signup").setAttribute("aria-selected", signup);
+  $("tab-login").setAttribute("aria-selected", !signup);
+  $("title").textContent = signup ? "Create your account" : "Welcome back";
+  $("subtitle").textContent = signup ? "Then upload your resume. Setup takes about 3 minutes." : "Log in to see your matches and pick up where you left off.";
+  $("submit").textContent = signup ? "Create account" : "Log in";
+  $("pw-hint").classList.toggle("hide", !signup);
+  $("password").autocomplete = signup ? "new-password" : "current-password";
+  $("msg").className = "msg";
+}
+$("tab-signup").onclick = () => { mode = "signup"; render(); };
+$("tab-login").onclick = () => { mode = "login"; render(); };
+$("pw-toggle").onclick = () => {
+  const show = $("password").type === "password";
+  $("password").type = show ? "text" : "password";
+  $("pw-toggle").textContent = show ? "Hide" : "Show";
+  $("pw-toggle").setAttribute("aria-label", show ? "Hide password" : "Show password");
+};
+render();
+
+// Already logged in? Go straight to the dashboard.
+if (db) db.auth.getSession().then(({ data }) => { if (data.session) location.href = "dashboard.html"; });
+
+$("form").onsubmit = async (e) => {
+  e.preventDefault();
+  if (needConfig($("msg"))) return;
+  const email = $("email").value.trim();
+  const password = $("password").value;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showMsg($("msg"), "Please enter a valid email address.", "err");
+  if (password.length < 8) return showMsg($("msg"), "Your password needs at least 8 characters.", "err");
+  $("submit").disabled = true;
+
+  if (mode === "signup") {
+    const { data, error } = await db.auth.signUp({
+      email, password,
+      options: { emailRedirectTo: location.origin + location.pathname.replace("auth.html", "dashboard.html") },
+    });
+    if (error) showMsg($("msg"), error.message, "err");
+    else if (data.session) location.href = "dashboard.html";
+    else showMsg($("msg"), "Almost done! Check your email and click the confirmation link.", "ok");
+  } else {
+    const { error } = await db.auth.signInWithPassword({ email, password });
+    if (error) showMsg($("msg"), error.message, "err");
+    else location.href = "dashboard.html";
+  }
+  $("submit").disabled = false;
+};
+</script>
+</body>
+</html>
