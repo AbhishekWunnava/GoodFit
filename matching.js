@@ -11,7 +11,7 @@
 // Unknown counts as 70% of a part, not zero. Serious mismatches cap the score below 50 (shown first):
 // not a product role 25, PO / delivery / BA role 40, not in your cities 40, missing a must-have domain or
 // regulation 45, too few years in product 45, likely below your level 55.
-// Hard filters (job type, work mode, company size, industry, keywords to avoid, posted date, search,
+// Hard filters (product roles only, job type, work mode, company size, industry, keywords to avoid, posted date, search,
 // exact titles) remove a job entirely; the score orders what's left.
 window.Matcher = (() => {
   const LEVELS = ["Entry level", "Mid level", "Senior", "Lead / Manager", "Director and above"];
@@ -60,7 +60,11 @@ window.Matcher = (() => {
   // so "Product Manager II" matches "Product Manager II - Ads" but not "Product Manager III" or "Group Product Manager".
   const titleHit = (title, roles) => roles.some((r) => r.trim() && titleKey(title).includes(titleKey(r)));
 
+  // A PM-type title: Product Manager / Owner / Lead / Head, APM, SPM, GPM, Director or VP of Product.
+  const isProductRole = (j) => !!(j._sig ? j._sig.productTitle : window.Signals && Signals.extractJob(j).productTitle);
+
   function passes(j, f) {
+    if (f.productOnly && !isProductRole(j)) return false;
     if (f.exactTitles && (f.roles || []).length && !titleHit(j.title, f.roles)) return false;
     if (f.jobTypes && f.jobTypes.length && !f.jobTypes.includes(j.jobType)) return false;
     if (f.workModes && f.workModes.length && j.workMode && !f.workModes.includes(j.workMode)) return false;
@@ -112,7 +116,17 @@ window.Matcher = (() => {
       openToDomainSwitch: !!prefs.openToDomainSwitch,
       expectedMin: Number(prefs.currency === "INR" || !prefs.currency ? prefs.expectedMin : 0) || null,
       notice: prefs.notice || "",
+      skills: details.skills || [],
     };
+  }
+
+  // A requirement line is met when you have one of the things it names. If it names something specific
+  // (a regulation, or a space like lending), the broad industry alone doesn't count: "KYC/AML experience"
+  // isn't met by "fintech".
+  function meetsItem(item, has) {
+    const specific = item.concepts.filter((k) => /^(reg:|sv:)/.test(k));
+    const pool = specific.length ? [...specific, ...item.concepts.filter((k) => !/^(v:|reg:|sv:)/.test(k))] : item.concepts;
+    return pool.some(has);
   }
 
   const NEUTRAL = 0.7; // share of a part's points when the job (or you) doesn't say
@@ -124,7 +138,10 @@ window.Matcher = (() => {
     const sig = j._sig || {};
     const good = [], bad = [], caps = [];
     const parts = {};
-    const cap = (n, why) => caps.push([n, why]);
+    // links: reason text -> what to point at in the description (see evidence()).
+    const links = {};
+    const cap = (n, why, k) => { caps.push([n, why]); if (k) links[why] = k; };
+    const tag = (list, text, k) => { list.push(text); if (k) links[text] = k; };
 
     // --- Role (23): archetype 15 + scope and level 8
     let role = 0;
@@ -143,24 +160,24 @@ window.Matcher = (() => {
     let scope = want < 0 || have < 0 ? 8 * NEUTRAL : want === have ? 8 : Math.abs(want - have) === 1 ? 4 : 0;
     if (want >= 0 && have >= 0 && want !== have) bad.push(`${j._level} level (you're ${myLevel})`);
     else if (want >= 0 && want === have) good.push(`${j._level} level`);
-    if (sig.peopleMgmt && !c.managedPMs) { scope = Math.max(0, scope - 5); bad.push("Asks for managing a team of PMs"); }
-    else if (sig.peopleMgmt && c.managedPMs) good.push("Asks for managing PMs, which you've done");
+    if (sig.peopleMgmt && !c.managedPMs) { scope = Math.max(0, scope - 5); tag(bad, "Asks for managing a team of PMs", "people_mgmt"); }
+    else if (sig.peopleMgmt && c.managedPMs) tag(good, "Asks for managing PMs, which you've done", "people_mgmt");
     else if (!sig.peopleMgmt && c.managedPMs && want >= 0 && have >= 0 && want - have >= 2) cap(55, `${j._level} individual role; likely below your level`);
     parts.role = role + scope;
 
     // --- Must-haves (19): must-haves 15 + preferred 4
-    const meets = (item) => item.concepts.some((k) => c.concepts.has(k));
+    const meets = (item) => meetsItem(item, (k) => c.concepts.has(k));
     const must = sig.must || [], pref = sig.pref || [];
     const metM = must.filter(meets), missM = must.filter((x) => !meets(x));
     let reqs = must.length ? 15 * (metM.length / must.length) : 15 * NEUTRAL;
-    if (must.length) (metM.length === must.length ? good : bad).push(`Meets ${metM.length} of ${must.length} checkable must-haves`);
+    if (must.length) tag(metM.length === must.length ? good : bad, `Meets ${metM.length} of ${must.length} checkable must-haves`, "must");
     // A missed must-have caps the score only when it names a regulation or a specific space (e.g. lending)
     // and isn't softened ("or similar", "preferably", "a plus").
     const hardMiss = missM.find((x) => x.concepts.every((k) => /^(reg:|sv:)/.test(k)) && !/\b(or similar|or other|or related|or equivalent|preferably|ideally|a plus|is a plus|bonus|nice to have)\b/i.test(x.text));
-    if (hardMiss) cap(45, `Requires: ${hardMiss.text.length > 90 ? hardMiss.text.slice(0, 87) + "…" : hardMiss.text}`);
+    if (hardMiss) cap(45, `Requires: ${hardMiss.text.length > 90 ? hardMiss.text.slice(0, 87) + "…" : hardMiss.text}`, "must");
     const metP = pref.filter(meets);
     reqs += pref.length ? 4 * (metP.length / pref.length) : 4 * NEUTRAL;
-    if (metP.length) good.push(`Meets ${metP.length} of ${pref.length} preferred`);
+    if (metP.length) tag(good, `Meets ${metP.length} of ${pref.length} preferred`, "pref");
     parts.must = reqs;
 
     // --- Experience (15): years asked (12) + total years (3)
@@ -172,15 +189,15 @@ window.Matcher = (() => {
     const what = inProduct ? "in product" : "";
     let exp = 0;
     if (min == null || py == null) { exp += 12 * NEUTRAL; if (min == null) bad.push("Experience needed isn't stated"); }
-    else if (py >= min && (max == null || py <= max + 1)) { exp += 12; good.push(`Your ${py} yrs ${what || "of experience"} fit (asks ${asks}${what ? " " + what : ""})`); }
+    else if (py >= min && (max == null || py <= max + 1)) { exp += 12; tag(good, `Your ${py} yrs ${what || "of experience"} fit (asks ${asks}${what ? " " + what : ""})`, "years"); }
     else if (py < min) {
-      if (min - py <= 1) { exp += 8; bad.push(`Slight stretch: asks ${asks} ${what}`.trim()); }
-      else { bad.push(`Asks ${asks} ${what}; you have ${py}`.replace("  ", " ")); cap(45, `Asks ${asks}${what ? " " + what : ""}; you have ${py}`); }
+      if (min - py <= 1) { exp += 8; tag(bad, `Slight stretch: asks ${asks} ${what}`.trim(), "years"); }
+      else { tag(bad, `Asks ${asks} ${what}; you have ${py}`.replace("  ", " "), "years"); cap(45, `Asks ${asks}${what ? " " + what : ""}; you have ${py}`, "years"); }
     } else {
       const over = py - max;
       exp += over <= 2 ? 10 : over <= 4 ? 6 : 3;
-      bad.push(`You may be over-qualified (asks ${asks})`);
-      if (over >= 5) cap(55, `Likely below your level (asks ${asks}; you have ${py})`);
+      tag(bad, `You may be over-qualified (asks ${asks})`, "years");
+      if (over >= 5) cap(55, `Likely below your level (asks ${asks}; you have ${py})`, "years");
     }
     if (j.expMin == null || c.years == null) exp += 3 * NEUTRAL;
     else exp += c.years >= j.expMin && (j.expMax == null || c.years <= j.expMax + 2) ? 3 : 1;
@@ -190,15 +207,15 @@ window.Matcher = (() => {
     let dom = 0;
     const jsv = sig.subVerticals || [], jv = sig.verticals || [];
     if (!jv.length || !c.verticals.length) dom += 12 * NEUTRAL;
-    else if (jsv.some((x) => c.subVerticals.includes(x))) { dom += 12; good.push(`Same space: ${jsv.find((x) => c.subVerticals.includes(x))}`); }
-    else if (jv.some((x) => c.verticals.includes(x))) { dom += 8; good.push(`Same industry: ${jv.find((x) => c.verticals.includes(x))}`); }
-    else if (jv.some((x) => c.verticals.some((y) => adjacent(x, y)))) { dom += c.openToDomainSwitch ? 6 : 5; bad.push(`Nearby industry: ${jv[0]}`); }
-    else { dom += c.openToDomainSwitch ? 4 : 1; bad.push(`Different industry: ${jv[0]}`); }
+    else if (jsv.some((x) => c.subVerticals.includes(x))) { dom += 12; { const x = jsv.find((y) => c.subVerticals.includes(y)); tag(good, `Same space: ${x}`, `sv:${x}`); } }
+    else if (jv.some((x) => c.verticals.includes(x))) { dom += 8; { const x = jv.find((y) => c.verticals.includes(y)); tag(good, `Same industry: ${x}`, `v:${x}`); } }
+    else if (jv.some((x) => c.verticals.some((y) => adjacent(x, y)))) { dom += c.openToDomainSwitch ? 6 : 5; tag(bad, `Nearby industry: ${jv[0]}`, `v:${jv[0]}`); }
+    else { dom += c.openToDomainSwitch ? 4 : 1; tag(bad, `Different industry: ${jv[0]}`, `v:${jv[0]}`); }
     const jm = sig.models || [], cm = c.models;
     if (!jm.length || !cm.length) dom += 10 * NEUTRAL;
-    else if (jm.some((m) => cm.includes(m))) { dom += 10; good.push(`${jm.find((m) => cm.includes(m))} business, like yours`); }
-    else if (jm.includes("B2B2C") || cm.includes("B2B2C") || jm.includes("Marketplace") || cm.includes("Marketplace")) { dom += 6; bad.push(`${jm.join(" / ")} business (you: ${cm.join(" / ")})`); }
-    else { dom += 2; bad.push(`${jm.join(" / ")} business; your background is ${cm.join(" / ")}`); }
+    else if (jm.some((m) => cm.includes(m))) { dom += 10; { const m = jm.find((x) => cm.includes(x)); tag(good, `${m} business, like yours`, `model:${m}`); } }
+    else if (jm.includes("B2B2C") || cm.includes("B2B2C") || jm.includes("Marketplace") || cm.includes("Marketplace")) { dom += 6; tag(bad, `${jm.join(" / ")} business (you: ${cm.join(" / ")})`, `model:${jm[0]}`); }
+    else { dom += 2; tag(bad, `${jm.join(" / ")} business; your background is ${cm.join(" / ")}`, `model:${jm[0]}`); }
     // Market fit: segment, market, GTM motion, product type (1.5 each), compared through concepts.
     const fit = (known, ok) => (known ? (ok ? 1.5 : 0.3) : 1.5 * NEUTRAL);
     const seg = sig.segments || [];
@@ -223,10 +240,10 @@ window.Matcher = (() => {
     let prac = 0;
     const wanted = (f.locations || []).map(city);
     const inCity = j.cities.find((x) => wanted.includes(x));
-    if (j.workMode === "Remote") { prac += 5; good.push("Remote"); }
-    else if (inCity) { prac += 5; good.push(`In ${inCity}`); }
+    if (j.workMode === "Remote") { prac += 5; tag(good, "Remote", "city"); }
+    else if (inCity) { prac += 5; tag(good, `In ${inCity}`, "city"); }
     else if (!wanted.length) prac += 5;
-    else { prac += 2; bad.push(`Needs a move to ${j.cities[0] || j.location}`); if (!f.relocate) cap(40, `Not in your cities (${j.cities[0] || j.location})`); }
+    else { prac += 2; tag(bad, `Needs a move to ${j.cities[0] || j.location}`, "city"); if (!f.relocate) cap(40, `Not in your cities (${j.cities[0] || j.location})`, "city"); }
     let pn = 2;
     if (j.salaryMax && c.expectedMin && j.salaryMax / 1e5 < c.expectedMin) { pn -= 1.5; bad.push(`Pays up to ₹${Math.round(j.salaryMax / 1e5)} LPA (you want ${c.expectedMin}+)`); }
     if (sig.immediate && /60|90|more/i.test(c.notice)) { pn -= 1; bad.push("Wants immediate joiners"); }
@@ -237,7 +254,44 @@ window.Matcher = (() => {
     let total = Math.round(Object.values(parts).reduce((a, b) => a + b, 0));
     caps.sort((a, b) => a[0] - b[0]);
     if (caps.length && total > caps[0][0]) total = caps[0][0];
-    return { score: total, good, bad, parts, caps: caps.map((x) => x[1]), confidence: sig.confidence || "medium" };
+    return { score: total, good, bad, parts, caps: caps.map((x) => x[1]), links, confidence: sig.confidence || "medium" };
+  }
+
+  // ---------- Evidence: where in the description the match (or gap) is ----------
+  // Returns what a page needs to highlight a job description for this person:
+  //  terms:  [{ words, key, cls: "hit" | "gap", scope: "all" | "req" }]  (scope "req" = only inside requirement lines)
+  //  lines:  normalised requirement line -> { kind: "must" | "pref", met }
+  //  years:  (a, b) => "hit" | "gap"   for "5+ years" / "3-5 years" phrases
+  //  places: city words to mark as a match
+  function evidence(j, f, c) {
+    const sig = j._sig || {};
+    const has = (key) => (key.startsWith("model:") ? c.models.includes(key.slice(6)) || c.concepts.has(key.slice(6).toLowerCase()) : c.concepts.has(key));
+    const jm = sig.models || [];
+    const terms = [];
+    for (const t of (window.Signals ? Signals.vocab() : [])) {
+      if (has(t.key)) terms.push({ ...t, cls: "hit", scope: t.kind === "specific" ? "all" : "req" });
+      // A business model you haven't worked in is worth flagging anywhere; other gaps only where the job requires them.
+      else if (t.key.startsWith("model:") && jm.includes(t.key.slice(6)) && c.models.length) terms.push({ ...t, cls: "gap", scope: "all" });
+      else terms.push({ ...t, cls: "gap", scope: "req" });
+    }
+    const skills = c.skills.filter((k) => k && k.length > 1);
+    if (skills.length) terms.unshift({ key: "skill", words: skills.map((k) => k.toLowerCase()), cls: "hit", scope: "all" });
+    const wanted = (f.locations || []).map(city);
+    const places = Object.keys(CITY).filter((k) => wanted.includes(CITY[k]));
+    if (j.workMode === "Remote") places.push("remote");
+    const norm = (t) => String(t).toLowerCase().replace(/^[•●▪◦‣·–\-*\d.)\s]+/, "").replace(/\s+/g, " ").trim().slice(0, 80);
+    const lines = new Map();
+    for (const [kind, list] of [["must", sig.must || []], ["pref", sig.pref || []]]) {
+      for (const item of list) lines.set(norm(item.text), { kind, met: meetsItem(item, has) });
+    }
+    const inProduct = sig.pmMin != null;
+    const py = c.pmYears ?? c.years;
+    const years = (a, b) => {
+      const mine = inProduct ? py : c.years;
+      if (mine == null) return null;
+      return mine >= a && (b == null || mine <= b + 1) ? "hit" : mine < a ? "gap" : null;
+    };
+    return { terms, lines, years, places, norm };
   }
 
   const CONF = { high: 2, medium: 1, low: 0 };
@@ -250,7 +304,15 @@ window.Matcher = (() => {
       if (!passes(j, f)) continue;
       all.push({ job: j, ...score(j, f, profile, t) });
     }
-    const by = opts.sort === "newest" ? (a, b) => b.job._time - a.job._time || b.score - a.score : (a, b) => b.score - a.score || CONF[b.confidence] - CONF[a.confidence] || b.job._time - a.job._time;
+    const best = (a, b) => b.score - a.score || CONF[b.confidence] - CONF[a.confidence] || b.job._time - a.job._time;
+    const yrs = (r) => r.job._sig?.pmMin ?? r.job.expMin; // years asked; unknown goes last
+    const byYears = (dir) => (a, b) => (yrs(a) == null) - (yrs(b) == null) || dir * ((yrs(a) ?? 0) - (yrs(b) ?? 0)) || best(a, b);
+    const by = {
+      newest: (a, b) => b.job._time - a.job._time || best(a, b),
+      "exp-asc": byYears(1),
+      "exp-desc": byYears(-1),
+      company: (a, b) => a.job.company.localeCompare(b.job.company) || best(a, b),
+    }[opts.sort] || best;
     all.sort(by);
     const cut = opts.minScore ?? 50;
     return { shown: all.filter((r) => r.score >= cut), lowFit: all.filter((r) => r.score < cut), total: jobs.length };
@@ -259,5 +321,5 @@ window.Matcher = (() => {
   // The six parts of the score and their maximum points, in display order.
   const PARTS = [["role", "Role", 23], ["must", "Must-haves", 19], ["experience", "Experience", 15], ["domain", "Domain", 28], ["company", "Company", 8], ["practical", "Practical", 7]];
 
-  return { prepare, run, candidate, city, plural, LEVELS, PARTS, titleHit };
+  return { prepare, run, candidate, evidence, city, plural, LEVELS, PARTS, titleHit, isProductRole };
 })();

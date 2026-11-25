@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GoodFit – common questions</title>
+<meta name="description" content="Questions product managers are commonly asked in Indian job searches, with what interviewers look for and how to approach each one.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Latin:wdth,wght@75..125,300..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="wrap">
+  <nav class="top">
+    <a class="logo" href="index.html"><span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>GoodFit</a>
+    <div class="nav-tabs hide" id="app-tabs">
+      <a href="jobs.html">Matches</a>
+      <a href="jobs.html#saved">Saved</a>
+      <a href="questions.html" class="on" aria-current="page">Questions</a>
+      <a href="dashboard.html?edit=review">Profile</a>
+    </div>
+    <div class="user-chip hide" id="user-chip">
+      <span class="avatar" id="avatar" aria-hidden="true"></span>
+      <button class="btn ghost sm" id="logout">Log out</button>
+    </div>
+    <div class="nav-links" id="guest-links">
+      <a class="btn ghost sm" href="auth.html">Log in</a>
+      <a class="btn sm" href="auth.html?mode=signup">Get started</a>
+    </div>
+  </nav>
+
+  <main class="qbank">
+    <header class="q-head">
+      <h1>Common questions</h1>
+      <p>What product managers get asked in Indian job searches, from the first HR call to the final round. Each question says what the interviewer is listening for and how to approach it.</p>
+    </header>
+
+    <div class="q-tools">
+      <div class="search-box">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <label class="sr-only" for="q-search">Search questions</label>
+        <input type="text" id="q-search" placeholder="Search, e.g. metrics, CTC, UPI" autocomplete="off">
+      </div>
+      <div class="opts" id="q-cats" role="group" aria-label="Show a category"></div>
+      <div class="q-progress">
+        <span id="q-count" aria-live="polite"></span>
+        <label class="switch"><input type="checkbox" id="q-unpractised">Hide practised</label>
+      </div>
+    </div>
+
+    <div id="q-list"></div>
+  </main>
+
+  <footer class="site">
+    <span>© GoodFit</span>
+    <span>General guidance, not tied to any company's actual interview process.</span>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script src="ui.js"></script>
+<script src="questions-data.js"></script>
+<script src="questions.js"></script>
+</body>
+</html>
