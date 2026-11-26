@@ -133,6 +133,13 @@ backend is used automatically.
 - Test: upload a resume. The details screen should say "Our AI read your resume". If it says the AI
   wasn't available, the reason is shown there.
 
+**Password reset (needed for "Forgot password?")**
+- Authentication -> URL Configuration -> Redirect URLs: add the address of `reset.html` for every place
+  GoodFit runs, e.g. `http://localhost:8000/reset.html` and `https://<you>.github.io/<repo>/reset.html`.
+  Without it, Supabase sends people to the Site URL instead of the page that sets a new password.
+- Supabase's built-in email only sends a few emails per hour; for real users, set up your own SMTP
+  (Authentication -> Emails -> SMTP settings).
+
 **5. (Optional) Make testing easier**
 - Authentication -> Providers -> Email -> turn off "Confirm email" while developing. Turn it back on before sharing publicly.
 
@@ -178,7 +185,8 @@ and duplicates are removed. Results are short previews; "See the full job" opens
 
 ## Files
 - `index.html` landing page
-- `auth.html` create account / log in
+- `auth.html` create account / log in / forgot password (`?mode=reset` emails a reset link)
+- `reset.html` the page the reset email opens: set a new password
 - `dashboard.html` + `dashboard.js` onboarding (login required)
 - `supabase/functions/parse-resume/index.ts` server function that reads a resume with Claude
 - `jobs.html` + `jobs.js` the Matches page; `matching.js` filters and the V1 score (six parts, caps, confidence); `jobs.json` job snapshot

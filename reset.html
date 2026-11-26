@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GoodFit – set a new password</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Latin:wdth,wght@75..125,300..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<main class="auth-main reset-page">
+  <div class="auth-box">
+    <a class="logo reset-logo" href="index.html"><span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>GoodFit</a>
+    <h1>Set a new password</h1>
+
+    <p class="sub" id="checking">Checking your reset link…</p>
+
+    <div id="expired" class="hide">
+      <p class="sub" id="expired-text">This reset link has expired or has already been used.</p>
+      <a class="btn lg block" href="auth.html?mode=reset">Send a new reset link</a>
+      <p class="small" style="margin-top:16px"><a href="auth.html">Back to log in</a></p>
+    </div>
+
+    <form id="form" class="hide" novalidate>
+      <p class="sub" id="for-who">Choose a new password for your account.</p>
+      <div class="field" id="f-pw">
+        <label for="password">New password <span class="hint">(at least 8 characters)</span></label>
+        <div class="pw">
+          <input type="password" id="password" required minlength="8" autocomplete="new-password">
+          <button type="button" id="pw-toggle" aria-label="Show password">Show</button>
+        </div>
+        <div class="err-text">Use at least 8 characters.</div>
+      </div>
+      <div class="field" id="f-pw2">
+        <label for="password2">Type it again</label>
+        <input type="password" id="password2" required autocomplete="new-password">
+        <div class="err-text">The two passwords don't match.</div>
+      </div>
+      <button class="btn lg block" id="submit">Save new password</button>
+    </form>
+    <div id="msg" class="msg" role="status"></div>
+  </div>
+</main>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const show = (id) => { ["checking", "expired", "form"].forEach((x) => $(x).classList.toggle("hide", x !== id)); };
+
+// Supabase puts problems with the link in the URL, e.g. #error_code=otp_expired&error_description=...
+const params = new URLSearchParams(location.hash.slice(1) + "&" + location.search.slice(1));
+const linkError = params.get("error_description");
+
+function ready(session) {
+  if (!session) return;
+  show("form");
+  if (session.user && session.user.email) $("for-who").textContent = `Choose a new password for ${session.user.email}.`;
+  $("password").focus();
+}
+
+async function init() {
+  if (linkError) {
+    $("expired-text").textContent = /expired|invalid/i.test(linkError)
+      ? "This reset link has expired or has already been used. Links work once, for a limited time."
+      : `This reset link didn't work (${linkError}).`;
+    return show("expired");
+  }
+  // Opening the link signs you in for this one purpose; supabase-js reads the link from the URL.
+  db.auth.onAuthStateChange((event, session) => { if (session && (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN")) ready(session); });
+  const { data } = await db.auth.getSession();
+  if (data.session) return ready(data.session);
+  setTimeout(async () => {
+    const again = await db.auth.getSession();
+    if (again.data.session) ready(again.data.session);
+    else {
+      if (demo) $("expired-text").textContent = "Demo mode: there are no reset emails here, and any password works. Log in with any password.";
+      show("expired");
+    }
+  }, 1500);
+}
+
+$("pw-toggle").onclick = () => {
+  const on = $("password").type === "password";
+  $("password").type = $("password2").type = on ? "text" : "password";
+  $("pw-toggle").textContent = on ? "Hide" : "Show";
+  $("pw-toggle").setAttribute("aria-label", on ? "Hide password" : "Show password");
+};
+$("form").addEventListener("input", () => {
+  if ($("password").value.length >= 8) $("f-pw").classList.remove("invalid");
+  if ($("password2").value === $("password").value) $("f-pw2").classList.remove("invalid");
+});
+
+$("form").onsubmit = async (e) => {
+  e.preventDefault();
+  const pw = $("password").value, pw2 = $("password2").value;
+  $("f-pw").classList.toggle("invalid", pw.length < 8);
+  $("f-pw2").classList.toggle("invalid", pw.length >= 8 && pw !== pw2);
+  if (pw.length < 8) return $("password").focus();
+  if (pw !== pw2) return $("password2").focus();
+  $("submit").disabled = true;
+  const { error } = await db.auth.updateUser({ password: pw });
+  $("submit").disabled = false;
+  if (error) {
+    const msg = /different from the old|same/i.test(error.message) ? "Your new password must be different from your old one."
+      : /session|expired|jwt/i.test(error.message) ? "This reset link has expired. Please request a new one." : error.message;
+    return showMsg($("msg"), msg, "err");
+  }
+  $("form").classList.add("hide");
+  showMsg($("msg"), "Password updated. Taking you to GoodFit…", "ok");
+  setTimeout(() => (location.href = "dashboard.html"), 1400);
+};
+
+init().catch((e) => { console.error(e); show("expired"); });
+</script>
+</body>
+</html>
