@@ -8,4 +8,8 @@ window.APP_CONFIG = {
   // ANTHROPIC_API_KEY secret in Supabase). While false, resumes are read by the
   // rules-based reader in the browser, which is free but less accurate.
   USE_AI_READER: false,
+
+  // The GoodFit assistant (chat panel on Matches). Needs the agent function deployed and the
+  // ANTHROPIC_API_KEY secret (README step "GoodFit assistant"). While false, the panel explains how to turn it on.
+  USE_AGENT: false,
 };
