@@ -31,7 +31,7 @@
       <h1 id="title"></h1>
       <p class="sub" id="subtitle"></p>
 
-      <div class="tabs" role="tablist">
+      <div class="tabs" role="tablist" id="tabs">
         <button class="tab" id="tab-signup" role="tab" type="button">Create account</button>
         <button class="tab" id="tab-login" role="tab" type="button">Log in</button>
       </div>
@@ -41,14 +41,16 @@
           <label for="email">Email</label>
           <input type="email" id="email" required autocomplete="email" placeholder="you@example.com">
         </div>
-        <div class="field">
+        <div class="field" id="pw-field">
           <label for="password">Password <span class="hint" id="pw-hint">(at least 8 characters)</span></label>
           <div class="pw">
             <input type="password" id="password" required minlength="8" autocomplete="current-password">
             <button type="button" id="pw-toggle" aria-label="Show password">Show</button>
           </div>
+          <button type="button" class="link-btn" id="forgot">Forgot password?</button>
         </div>
         <button class="btn lg block" id="submit"></button>
+        <button type="button" class="link-btn back-link hide" id="back-login">Back to log in</button>
       </form>
       <div id="msg" class="msg"></div>
       <p class="small auth-fine">By continuing you agree that GoodFit will never submit an application without your approval.</p>
@@ -59,24 +61,33 @@
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script>
-let mode = new URLSearchParams(location.search).get("mode") === "signup" ? "signup" : "login";
+// Modes: "signup", "login", and "reset" (forgot password: email a link to set a new password).
+const asked = new URLSearchParams(location.search).get("mode");
+let mode = ["signup", "reset"].includes(asked) ? asked : "login";
 const $ = (id) => document.getElementById(id);
 
 function render() {
-  const signup = mode === "signup";
+  const signup = mode === "signup", reset = mode === "reset";
+  $("tabs").classList.toggle("hide", reset);
+  $("pw-field").classList.toggle("hide", reset);
+  $("forgot").classList.toggle("hide", mode !== "login");
+  $("back-login").classList.toggle("hide", !reset);
   $("tab-signup").classList.toggle("on", signup);
   $("tab-login").classList.toggle("on", !signup);
   $("tab-signup").setAttribute("aria-selected", signup);
   $("tab-login").setAttribute("aria-selected", !signup);
-  $("title").textContent = signup ? "Create your account" : "Welcome back";
-  $("subtitle").textContent = signup ? "Then upload your resume. Setup takes about 3 minutes." : "Log in to see your matches and pick up where you left off.";
-  $("submit").textContent = signup ? "Create account" : "Log in";
+  $("title").textContent = reset ? "Reset your password" : signup ? "Create your account" : "Welcome back";
+  $("subtitle").textContent = reset ? "Enter the email you signed up with. We'll send you a link to set a new password."
+    : signup ? "Then upload your resume. Setup takes about 3 minutes." : "Log in to see your matches and pick up where you left off.";
+  $("submit").textContent = reset ? "Send reset link" : signup ? "Create account" : "Log in";
   $("pw-hint").classList.toggle("hide", !signup);
   $("password").autocomplete = signup ? "new-password" : "current-password";
   $("msg").className = "msg";
 }
 $("tab-signup").onclick = () => { mode = "signup"; render(); };
 $("tab-login").onclick = () => { mode = "login"; render(); };
+$("forgot").onclick = () => { mode = "reset"; render(); $("email").focus(); };
+$("back-login").onclick = () => { mode = "login"; render(); $("email").focus(); };
 $("pw-toggle").onclick = () => {
   const show = $("password").type === "password";
   $("password").type = show ? "text" : "password";
@@ -94,6 +105,7 @@ $("form").onsubmit = async (e) => {
   const email = $("email").value.trim();
   const password = $("password").value;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showMsg($("msg"), "Please enter a valid email address.", "err");
+  if (mode === "reset") return sendReset(email);
   if (password.length < 8) return showMsg($("msg"), "Your password needs at least 8 characters.", "err");
   $("submit").disabled = true;
 
@@ -112,6 +124,21 @@ $("form").onsubmit = async (e) => {
   }
   $("submit").disabled = false;
 };
+
+// Forgot password: Supabase emails a link that opens reset.html, where a new password is set.
+// The message is the same whether or not an account exists, so this can't be used to check emails.
+async function sendReset(email) {
+  $("submit").disabled = true;
+  const { error } = await db.auth.resetPasswordForEmail(email, {
+    redirectTo: location.origin + location.pathname.replace("auth.html", "reset.html"),
+  });
+  $("submit").disabled = false;
+  if (error) return showMsg($("msg"), /rate|too many|seconds/i.test(error.message)
+    ? "Too many reset emails in a short time. Please wait a few minutes and try again." : error.message, "err");
+  showMsg($("msg"), demo
+    ? "Demo mode: no email is sent, and any password works here. Go back to log in and use any password."
+    : `If there's a GoodFit account for ${email}, we've sent it a link to reset your password. Check your inbox and spam folder. The link works once.`, "ok");
+}
 </script>
 </body>
 </html>

@@ -133,6 +133,13 @@ backend is used automatically.
 - Test: upload a resume. The details screen should say "Our AI read your resume". If it says the AI
   wasn't available, the reason is shown there.
 
+**Password reset (needed for "Forgot password?")**
+- Authentication -> URL Configuration -> Redirect URLs: add the address of `reset.html` for every place
+  GoodFit runs, e.g. `http://localhost:8000/reset.html` and `https://<you>.github.io/<repo>/reset.html`.
+  Without it, Supabase sends people to the Site URL instead of the page that sets a new password.
+- Supabase's built-in email only sends a few emails per hour; for real users, set up your own SMTP
+  (Authentication -> Emails -> SMTP settings).
+
 **5. (Optional) Make testing easier**
 - Authentication -> Providers -> Email -> turn off "Confirm email" while developing. Turn it back on before sharing publicly.
 
@@ -172,7 +179,25 @@ and duplicates are removed. Results are short previews; "See the full job" opens
 - To search for more, add rows to `job_searches`, e.g. `insert into public.job_searches (what, "where") values ('product owner', 'Pune');`
   Adzuna's free plan has daily request limits; each search uses up to `max_pages` requests per day.
 
-**GoodFit assistant: chat on the Matches page (about 10 minutes)**
+**9. Match emails, daily or weekly (about 15 minutes, free)**
+People choose in Preferences: "Email me my new matches": Off, Weekly (Mondays, 8 am) or Daily (8 am).
+A GitHub Action (`.github/workflows/match-emails.yml`) runs every morning at 08:00 India time, builds each
+email with the same scoring as the site (`report.js`) and sends it through Resend. "Preview the email" in
+Preferences (`email-preview.html`) shows exactly what someone would get, without sending anything.
+- SQL Editor: run all of `supabase-reports.sql` (adds the `report_log` table and lets the sender read profiles).
+- Resend: sign up at resend.com (free plan) -> API Keys -> Create. Until you verify your own domain in Resend,
+  it can only send to the email address you signed up with, from `onboarding@resend.dev` (fine for testing).
+- GitHub: repo -> Settings -> Secrets and variables -> Actions.
+  - Secrets: `SUPABASE_URL` (your Project URL), `SUPABASE_SERVICE_ROLE_KEY` (Supabase -> Project Settings -> API ->
+    service_role / secret key; keep it secret, never in `config.js`), `RESEND_API_KEY`.
+  - Variables: `SITE_URL` (where GoodFit is hosted, for links in the email) and, once your domain is verified,
+    `REPORT_FROM` (e.g. `GoodFit <matches@yourdomain.com>`).
+- Merge to `main` (scheduled runs only happen from the default branch).
+- Test: repo -> Actions -> Match emails -> Run workflow. Leave "Dry run" ticked first: the log lists who would get
+  an email. Then untick it, tick "Ignore the schedule" and put your own address in "Only this email" to get one now.
+- Check what was sent: `select * from public.report_log order by sent_at desc;`
+
+**10. GoodFit assistant: chat on the Matches page (about 10 minutes)**
 "Ask GoodFit" opens a chat panel where people ask in their own words ("B2B SaaS fintech roles in Pune, not
 Group PM") and the assistant searches, explains scores, compares jobs, saves or hides them, and changes
 preferences after a yes. The spec is the "GoodFit Agent Spec" doc. It runs on Claude (`claude-opus-5-5`, low
@@ -187,13 +212,14 @@ the tools themselves run in the browser on the person's own data, with the same 
 - Cost: each reply is one or more model calls; check real usage with the query at the end of `supabase-agent.sql`.
   If a safety check declines a request, the API retries on a fallback model in the same call (`fallbacks: "default"`).
 
-**9. Put it online (free)**
+**11. Put it online (free)**
 - Push the folder to a GitHub repo -> repo Settings -> Pages -> deploy from `main`.
 - Then in Supabase: Authentication -> URL Configuration -> add your Pages URL as the Site URL.
 
 ## Files
 - `index.html` landing page
-- `auth.html` create account / log in
+- `auth.html` create account / log in / forgot password (`?mode=reset` emails a reset link)
+- `reset.html` the page the reset email opens: set a new password
 - `dashboard.html` + `dashboard.js` onboarding (login required)
 - `supabase/functions/parse-resume/index.ts` server function that reads a resume with Claude
 - `jobs.html` + `jobs.js` the Matches page; `matching.js` filters and the V1 score (six parts, caps, confidence); `jobs.json` job snapshot
@@ -209,6 +235,9 @@ the tools themselves run in the browser on the person's own data, with the same 
 - `roles.js` standard job titles, families and seniority words (from real postings)
 - `app.js` shared helpers + demo mode, `config.js` your keys, `style.css` all styles (see Design below)
 - `supabase-setup.sql` database + storage rules
+- `report.js` builds the match email; `jobs-data.js` loads jobs (shared by Matches, the email preview and the sender);
+  `email-preview.html` shows your email; `scripts/send-reports.mjs` + `.github/workflows/match-emails.yml` send them;
+  `supabase-reports.sql` the send log
 - `supabase-jobs.sql` job tables (`job_sources`, `jobs`); `supabase-jobs-schedule.sql` the daily refresh; `supabase-jobs-search.sql` saved searches for the Adzuna job search engine; `supabase-jobs-add-companies.sql` 16 more companies
 - `supabase/functions/fetch-jobs/` the daily job refresher: `index.ts` (fetch + save), `normalize.js`
   (turns Greenhouse / Lever / Ashby postings into GoodFit's job shape; plain JS, also loads in a browser)

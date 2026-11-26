@@ -1,0 +1,66 @@
+# GoodFit match emails: every morning at 08:00 India time (02:30 UTC), email everyone whose
+# daily or weekly report is due (weekly ones go out on Mondays). See README "Match emails".
+# Scheduled runs only happen once this file is on the default branch (main).
+name: Match emails
+
+on:
+  schedule:
+    - cron: "30 2 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: build the emails but send nothing"
+        type: boolean
+        default: true
+      force:
+        description: "Ignore the schedule (send to everyone with emails turned on)"
+        type: boolean
+        default: false
+      only_email:
+        description: "Only this email address (optional)"
+        type: string
+        default: ""
+  pull_request:
+    paths:
+      - report.js
+      - matching.js
+      - signals.js
+      - roles.js
+      - jobs-data.js
+      - scripts/send-reports.mjs
+      - .github/workflows/match-emails.yml
+
+permissions:
+  contents: read
+
+jobs:
+  self-test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build a sample report from jobs.json and check it
+        run: node scripts/send-reports.mjs --self-test
+
+  send:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Send due match emails
+        run: node scripts/send-reports.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REPORT_FROM: ${{ vars.REPORT_FROM }}
+          SITE_URL: ${{ vars.SITE_URL }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force && '1' || '0' }}
+          ONLY_EMAIL: ${{ inputs.only_email }}
