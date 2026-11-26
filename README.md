@@ -172,6 +172,21 @@ and duplicates are removed. Results are short previews; "See the full job" opens
 - To search for more, add rows to `job_searches`, e.g. `insert into public.job_searches (what, "where") values ('product owner', 'Pune');`
   Adzuna's free plan has daily request limits; each search uses up to `max_pages` requests per day.
 
+**GoodFit assistant: chat on the Matches page (about 10 minutes)**
+"Ask GoodFit" opens a chat panel where people ask in their own words ("B2B SaaS fintech roles in Pune, not
+Group PM") and the assistant searches, explains scores, compares jobs, saves or hides them, and changes
+preferences after a yes. The spec is the "GoodFit Agent Spec" doc. It runs on Claude (`claude-opus-5-5`, low
+effort) through the `agent` Supabase function, which holds the key, the instructions and the tool definitions;
+the tools themselves run in the browser on the person's own data, with the same scoring as the list.
+- Anthropic: platform.claude.com -> API Keys -> Create, and add credit under Billing (same key as the AI resume reader).
+- SQL Editor: run all of `supabase-agent.sql` (usage log used for limits: 30 messages an hour, 150 a day).
+- Edge Functions -> Deploy a new function -> Via editor, named exactly `agent` (change the suggested random name),
+  with `supabase/functions/agent/index.ts`. Keep "Verify JWT" ON for this one.
+- Edge Functions -> Secrets: `ANTHROPIC_API_KEY` (skip if already added for the resume reader).
+- `config.js`: set `USE_AGENT: true`.
+- Cost: each reply is one or more model calls; check real usage with the query at the end of `supabase-agent.sql`.
+  If a safety check declines a request, the API retries on a fallback model in the same call (`fallbacks: "default"`).
+
 **9. Put it online (free)**
 - Push the folder to a GitHub repo -> repo Settings -> Pages -> deploy from `main`.
 - Then in Supabase: Authentication -> URL Configuration -> add your Pages URL as the Site URL.
@@ -187,6 +202,8 @@ and duplicates are removed. Results are short previews; "See the full job" opens
   leadership, technical and domain, and questions to ask. Search, category filter, "practised" ticks saved in the browser.
   Works logged in or out; linked from the Matches tabs and the landing page.
 - `ui.js` shared UI pieces (chips, option pills, icons, toast, and the fit bar `fitBar()` / `fitList()`)
+- `agent.js` the assistant's chat panel and tools (Matches page); `supabase/functions/agent/index.ts` the model turn
+  (instructions, tool definitions, limits); `supabase-agent.sql` the usage log
 - `signals.js` rules that read job descriptions and resumes for matching (archetype, B2B/B2C, verticals, must-haves…)
 - `resume-parser.js` rules-based fallback reader (PDF/.docx) + years-of-experience maths
 - `roles.js` standard job titles, families and seniority words (from real postings)

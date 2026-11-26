@@ -586,6 +586,7 @@ async function init() {
   recall();
   renderFilters();
   setView();
+  Agent.mount();
 }
 
 $("sort").onchange = () => { J.sort = $("sort").value; J.page = 1; remember(); renderList(); };
