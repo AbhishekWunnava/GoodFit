@@ -327,6 +327,7 @@ async function afterRead({ details, problem }) {
 }
 
 // ---------- Step 2: details ----------
+const REPORT_OPTS = [["off", "Off"], ["weekly", "Weekly"], ["daily", "Daily"]];
 const ARCHETYPES = [["pm", "Product Manager"], ["po", "Product Owner"], ["program", "Program / project manager"], ["ba", "Business analyst"]];
 const COMPANY_TYPES = [["Product", "Product company"], ["GCC", "Global company's India centre (GCC)"], ["Services", "IT services / consulting"]];
 
@@ -476,6 +477,7 @@ function defaultPrefs() {
     exactTitles: false,
     openToServices: false,
     openToDomainSwitch: false,
+    report: "off",
     currency: "INR",
     currentPay: "",
     expectedMin: "",
@@ -546,6 +548,14 @@ function renderPreferences() {
         ${field("Anything else we should know?", `<textarea id="notes" rows="3" placeholder="e.g. I want to move from B2B to consumer products">${esc(p.notes)}</textarea>`, { for: "notes", hint: "(optional)" })}
       </div>
 
+      <div class="group">
+        <h3><span class="icon-tile">${icon("clock")}</span>Email updates</h3>
+        ${field("Email me my new matches", optsHTML("report", REPORT_OPTS.map((o) => o[1]), (REPORT_OPTS.find((o) => o[0] === (p.report || "off")) || REPORT_OPTS[0])[1], "radio"),
+          { hint: `(sent to ${esc(S.user.email)})` })}
+        <p class="small" style="margin:-8px 0 18px">Weekly comes every Monday at 8 am, daily every morning at 8 am, with your best new matches and why they fit.
+          <a href="email-preview.html" target="_blank" rel="noopener">Preview the email</a> (opens in a new tab, using your saved preferences).</p>
+      </div>
+
       <div class="actions">
         <button type="button" class="btn ghost" id="back">${icon("arrowL")}Back</button>
         <div class="right"><button class="btn" id="next">Save preferences ${icon("arrowR")}</button></div>
@@ -576,6 +586,7 @@ function renderPreferences() {
       companySizes: checked("companySizes"), industries: [...industries], mustHaves: checked("mustHaves"),
       avoid: [...avoid], notes: $("notes").value.trim(),
       openToServices: $("openToServices").checked, openToDomainSwitch: $("openToDomainSwitch").checked,
+      report: (REPORT_OPTS.find((o) => o[1] === checked("report")[0]) || REPORT_OPTS[0])[0],
     };
     const unit = currency === "INR" ? "LPA" : "K / year";
     document.querySelectorAll("#prefs-form .unit").forEach((u) => (u.textContent = unit));
@@ -654,6 +665,7 @@ function renderReview() {
             ${row("Titles", p.exactTitles ? "Exact titles only" : "Similar titles too")}
             ${row("Services firms", p.openToServices ? "Open to them" : "No")}
             ${row("Industry switch", p.openToDomainSwitch ? "Open to it" : "Prefer my industries")}
+            ${row("Email updates", ({ weekly: "Weekly, Mondays", daily: "Daily" })[p.report] || "Off")}
           </div>
           <div style="margin-top:14px;display:grid;gap:10px">
             <div><span class="lbl">Roles</span><div style="margin-top:6px">${tags(p.roles)}</div></div>
