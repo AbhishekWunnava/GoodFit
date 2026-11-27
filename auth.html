@@ -112,7 +112,7 @@ $("form").onsubmit = async (e) => {
   if (mode === "signup") {
     const { data, error } = await db.auth.signUp({
       email, password,
-      options: { emailRedirectTo: location.origin + location.pathname.replace("auth.html", "dashboard.html") },
+      options: { emailRedirectTo: new URL("dashboard.html", location.href).href.split(/[?#]/)[0] },
     });
     if (error) showMsg($("msg"), error.message, "err");
     else if (data.session) location.href = "dashboard.html";
@@ -130,7 +130,7 @@ $("form").onsubmit = async (e) => {
 async function sendReset(email) {
   $("submit").disabled = true;
   const { error } = await db.auth.resetPasswordForEmail(email, {
-    redirectTo: location.origin + location.pathname.replace("auth.html", "reset.html"),
+    redirectTo: new URL("reset.html", location.href).href.split(/[?#]/)[0],
   });
   $("submit").disabled = false;
   if (error) return showMsg($("msg"), /rate|too many|seconds/i.test(error.message)
