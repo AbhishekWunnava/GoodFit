@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GoodFit – your data</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Latin:wdth,wght@75..125,300..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="wrap">
+  <nav class="top">
+    <a class="logo" href="index.html"><span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>GoodFit</a>
+    <div class="nav-tabs">
+      <a href="jobs.html">Matches</a>
+      <a href="jobs.html#saved">Saved</a>
+      <a href="questions.html">Questions</a>
+      <a href="dashboard.html?edit=review">Profile</a>
+    </div>
+    <div class="user-chip">
+      <span class="avatar" id="avatar" aria-hidden="true"></span>
+      <button class="btn ghost sm" id="logout">Log out</button>
+    </div>
+  </nav>
+
+  <main class="data-page">
+    <header class="q-head">
+      <h1>Your data</h1>
+      <p>Download everything GoodFit holds about you, or delete your account. <a href="privacy.html">How we use your data</a></p>
+    </header>
+
+    <div id="loading" class="loading-page"><div class="spinner"></div><span>Loading your account…</span></div>
+
+    <div id="content" class="hide">
+      <section class="data-sec" aria-labelledby="h-account">
+        <h2 id="h-account">Your account</h2>
+        <div class="kv" id="account-kv"></div>
+      </section>
+
+      <section class="data-sec" aria-labelledby="h-download">
+        <h2 id="h-download">Download your data</h2>
+        <p>A file with your account, profile, preferences, saved and hidden jobs, and the records of your match emails and assistant use. Opens in any text editor.</p>
+        <div class="data-btns">
+          <button class="btn" id="download" type="button">Download my data</button>
+          <button class="btn ghost" id="download-resume" type="button">Download my resume</button>
+        </div>
+        <div id="download-msg" class="msg" role="status"></div>
+      </section>
+
+      <section class="data-sec" aria-labelledby="h-keep">
+        <h2 id="h-keep">How long we keep it</h2>
+        <p>If you don't sign in for 12 months, GoodFit deletes your account and everything linked to it. Records of match emails and assistant use are deleted after 12 months.</p>
+      </section>
+
+      <section class="data-sec danger" aria-labelledby="h-delete">
+        <h2 id="h-delete">Delete your account</h2>
+        <p>This deletes your login, resume, details, preferences and records straight away. It can't be undone. Download your data first if you want a copy.</p>
+        <form id="delete-form" novalidate>
+          <div class="field" id="f-confirm">
+            <label for="confirm-text">Type DELETE to confirm</label>
+            <input type="text" id="confirm-text" autocomplete="off" spellcheck="false">
+            <div class="err-text">Type DELETE in capital letters.</div>
+          </div>
+          <button class="btn danger-btn" id="delete" type="submit">Delete my account</button>
+        </form>
+        <div id="delete-msg" class="msg" role="status"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site">
+    <span>© GoodFit</span>
+    <span><a href="privacy.html">Privacy</a></span>
+  </footer>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script src="ui.js"></script>
+<script src="jobs-data.js"></script>
+<script src="account.js"></script>
+</body>
+</html>

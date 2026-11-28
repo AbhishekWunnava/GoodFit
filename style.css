@@ -553,6 +553,20 @@ aside.side{position:sticky;top:20px;display:grid;gap:14px}
 .agent-form .btn{align-self:flex-end;padding:11px 14px}
 .agent-note{margin:0;padding:0 16px 12px;font-size:.8rem}
 
+/* ---------- Your data ---------- */
+.data-page{max-width:760px;margin:0 auto 72px}
+.data-sec{padding:24px 0;border-bottom:1px solid var(--rule)}
+.data-sec h2{font-size:1.35rem;font-weight:800;margin:0 0 8px}
+.data-sec p{color:var(--ink-2);max-width:40em;margin:0 0 14px}
+.data-sec .kv{max-width:480px}
+.data-btns{display:flex;gap:10px;flex-wrap:wrap}
+.data-sec.danger{border-bottom:0}
+.data-sec.danger h2{color:var(--brick)}
+.data-sec.danger .field{max-width:320px}
+.danger-btn{background:var(--brick);border-color:var(--brick)}
+.danger-btn:hover{background:#8F2A17;border-color:#8F2A17}
+.deleted-note{margin:0;border-radius:0;text-align:center;border-left:0}
+
 /* ---------- Responsive ---------- */
 @media (max-width:960px){
   .hero{grid-template-columns:1fr;gap:44px;padding-top:28px}
@@ -590,6 +604,7 @@ aside.side{position:sticky;top:20px;display:grid;gap:14px}
   .stepper button{padding-right:4px}
   .panel{padding:22px 18px}
   .user-chip .email{display:none}
+  .user-chip .data-link{padding:6px 6px}
   .actions{flex-wrap:wrap}
   .actions .right{width:100%}
   .actions .right .btn{flex:1}
