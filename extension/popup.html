@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GoodFit</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header>
+  <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+  <span class="brand">GoodFit</span>
+</header>
+
+<main>
+  <p class="loading" id="loading">Loading…</p>
+
+  <!-- First run: what the extension does, before it reads anything -->
+  <section id="consent" class="hide">
+    <h1>Before GoodFit starts</h1>
+    <p class="sub">Here's what the extension does. It won't read any page until you agree.</p>
+    <ul class="points">
+      <li>Reads the job you open on <b>LinkedIn</b> and <b>Naukri</b>. On other sites, only when you click <b>Check this page</b> or use the right-click menu.</li>
+      <li>Scores the job <b>on your computer</b>. The page and your browsing are never sent anywhere.</li>
+      <li>Reads your <b>GoodFit profile</b> to compare, and keeps a copy here until you sign out.</li>
+      <li><b>Never</b> applies, clicks, messages or posts anything for you.</li>
+    </ul>
+    <p class="fine"><a href="https://goodfitjobsonly.com/extension.html#permissions" target="_blank" rel="noopener">What each permission is for</a> · <a href="https://goodfitjobsonly.com/privacy.html#extension" target="_blank" rel="noopener">Privacy notice</a></p>
+    <button class="btn block" id="agree" type="button">Agree and continue</button>
+    <button class="btn text block" id="not-now" type="button">Not now</button>
+  </section>
+
+  <!-- Not signed in -->
+  <section id="signed-out" class="hide">
+    <h1>See how jobs fit you</h1>
+    <p class="sub">Sign in with your GoodFit account. Open a job on LinkedIn or Naukri and your fit score appears on the page.</p>
+    <form id="form" novalidate>
+      <label for="email">Email</label>
+      <input type="email" id="email" autocomplete="email" required>
+      <label for="password">Password</label>
+      <input type="password" id="password" autocomplete="current-password" required>
+      <button class="btn block" id="sign-in" type="submit">Sign in</button>
+    </form>
+    <p class="msg" id="msg" role="status" aria-live="polite"></p>
+    <div class="or"><span>or</span></div>
+    <button class="btn ghost block" id="sample" type="button">Try with a sample profile</button>
+    <p class="fine">No account? <a href="https://goodfitjobsonly.com/auth.html?mode=signup" target="_blank" rel="noopener">Create one on GoodFit</a>. You'll upload your resume there once.</p>
+  </section>
+
+  <!-- Signed in, or using the sample -->
+  <section id="signed-in" class="hide">
+    <div class="who">
+      <span class="avatar" id="avatar" aria-hidden="true"></span>
+      <div><div class="name" id="name"></div><div class="meta" id="meta"></div></div>
+    </div>
+    <p class="sample-note hide" id="sample-note">You're using a sample profile (a Senior PM in B2B payments, Bengaluru). Sign in to score jobs against your own resume.</p>
+    <button class="btn block" id="score" type="button">Check this page</button>
+    <p class="fine">Works by itself on LinkedIn and Naukri job pages. On other job sites, click Check this page, or select the job description, right-click it and choose <b>Check my fit with GoodFit</b>.</p>
+    <p class="msg" id="msg2" role="status" aria-live="polite"></p>
+    <div class="actions">
+      <button class="btn text" id="refresh" type="button">Update my profile</button>
+      <a class="btn text" href="https://goodfitjobsonly.com/dashboard.html?edit=review" target="_blank" rel="noopener">Edit profile ↗</a>
+      <button class="btn text" id="sign-out" type="button">Sign out</button>
+      <button class="btn text" id="withdraw" type="button">Turn off and withdraw agreement</button>
+    </div>
+  </section>
+</main>
+
+<footer>Jobs are scored on your device. GoodFit never sends the pages you view anywhere. <a href="https://goodfitjobsonly.com/privacy.html#extension" target="_blank" rel="noopener">Privacy</a></footer>
+<script src="popup.js"></script>
+</body>
+</html>

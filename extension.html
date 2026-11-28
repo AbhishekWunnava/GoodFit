@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GoodFit for Chrome</title>
+<meta name="description" content="See your GoodFit fit score on LinkedIn, Naukri and any job page: what fits, what the job asks that your resume doesn't show, and who to ask for a referral.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Latin:wdth,wght@75..125,300..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="wrap">
+  <nav class="top">
+    <a class="logo" href="index.html"><span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>GoodFit</a>
+    <div class="nav-tabs hide" id="app-tabs">
+      <a href="jobs.html">Matches</a>
+      <a href="jobs.html#saved">Saved</a>
+      <a href="questions.html">Questions</a>
+      <a href="dashboard.html?edit=review">Profile</a>
+    </div>
+    <div class="user-chip hide" id="user-chip">
+      <span class="avatar" id="avatar" aria-hidden="true"></span>
+      <a class="btn text sm data-link" href="account.html">Your data</a>
+      <button class="btn ghost sm" id="logout">Log out</button>
+    </div>
+    <div class="nav-links" id="guest-links">
+      <a class="btn ghost sm" href="auth.html">Log in</a>
+      <a class="btn sm" href="auth.html?mode=signup">Get started</a>
+    </div>
+  </nav>
+
+  <main class="ext-page">
+    <div class="ext-welcome hide" id="welcome" role="status">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+      <div><b>GoodFit is installed.</b> Pin it from Chrome's puzzle-piece menu, click it, agree and sign in. Then open any job on LinkedIn or Naukri.</div>
+    </div>
+
+    <section class="ext-hero">
+      <div>
+        <p class="kicker">GoodFit for Chrome</p>
+        <h1>Your fit score, on every job you open.</h1>
+        <p class="lead">Browsing LinkedIn or Naukri? GoodFit shows how well the job fits your resume, which must-haves your resume doesn't show yet, and who you could ask for a referral. Right there on the page.</p>
+        <div class="cta-row">
+          <a class="btn lg" href="#setup">Set up the extension</a>
+          <a class="btn ghost lg" href="#permissions">What it can see</a>
+        </div>
+        <ul class="trust">
+          <li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Free</li>
+          <li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Scores on your computer</li>
+          <li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Never applies or messages for you</li>
+        </ul>
+      </div>
+
+      <figure class="ext-demo" aria-label="Example: the GoodFit panel next to a Senior Product Manager job at Razorpay, scoring 86 out of 100, strong fit">
+        <div class="ext-demo-job" aria-hidden="true">
+          <div class="bar"><i></i><i></i><i></i></div>
+          <div class="jc">Razorpay · Bengaluru · Hybrid</div>
+          <div class="jt">Senior Product Manager, Payments</div>
+          <div class="lines"><i></i><i></i><i style="width:72%"></i><i></i><i style="width:58%"></i></div>
+        </div>
+        <div class="ext-demo-panel" aria-hidden="true">
+          <div class="hd"><span class="m"><svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>GoodFit</div>
+          <div class="sc"><b>86</b><span>/100</span><div><strong>Strong fit</strong><small>Senior PM, Payments · Razorpay</small></div></div>
+          <div class="fit"><span class="seg" style="flex:23"><i style="width:100%"></i></span><span class="seg" style="flex:19"><i style="width:58%"></i></span><span class="seg" style="flex:15"><i style="width:90%"></i></span><span class="seg" style="flex:28"><i style="width:93%"></i></span><span class="seg" style="flex:8"><i style="width:100%"></i></span><span class="seg" style="flex:7"><i style="width:100%"></i></span></div>
+          <ul class="rq">
+            <li class="yes"><em>Shown</em>5+ years in product, payments or wallets</li>
+            <li class="part"><em>Partly shown</em>Knows RBI rules for payment aggregators</li>
+            <li class="no"><em>Not shown</em>Has shipped an AI feature</li>
+          </ul>
+          <div class="ref">Product people at Razorpay ↗ <span>Write a referral ask</span></div>
+        </div>
+      </figure>
+    </section>
+
+    <section class="how" id="how">
+      <h2 class="sec-title">How it works</h2>
+      <p class="sec-lead">It uses the profile you've already set up on GoodFit. Nothing new to fill in.</p>
+      <ol class="steps">
+        <li><h3>Agree and install</h3><p>Read what the extension can see below, agree, and add it to Chrome. It also works in Edge, Brave and other Chromium browsers.</p></li>
+        <li><h3>Sign in once</h3><p>Click the GoodFit icon and sign in with your GoodFit email and password. Your resume details come from your GoodFit profile.</p></li>
+        <li><h3>Open any job</h3><p>On LinkedIn and Naukri the score appears by itself. On any other job site, click the icon and choose <b>Check this page</b>.</p></li>
+      </ol>
+    </section>
+
+    <section class="ext-cols" aria-labelledby="h-reads">
+      <h2 class="sec-title" id="h-reads">What it reads, and what it never does</h2>
+      <div class="ext-two">
+        <div class="card">
+          <h3>It reads</h3>
+          <ul class="ext-list yes">
+            <li><b>The job you open.</b> Title, company, location and description of that one job, while it's on your screen, to score it.</li>
+            <li><b>Your GoodFit profile.</b> The resume details and preferences you set up here, so it can compare.</li>
+            <li><b>Text you select,</b> if you right-click it and choose "Check my fit with GoodFit".</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>It never</h3>
+          <ul class="ext-list no">
+            <li>Sends the page, the job or your browsing anywhere. Scoring happens on your computer.</li>
+            <li>Reads your LinkedIn or Naukri messages, connections, profile or password.</li>
+            <li>Applies, clicks, messages or posts anything for you. You send every referral ask yourself.</li>
+            <li>Runs on other sites unless you ask it to on that page.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="ext-perms" id="permissions" aria-labelledby="h-perms">
+      <h2 class="sec-title" id="h-perms">The permissions Chrome will ask for</h2>
+      <p class="sec-lead">Chrome describes permissions broadly. Here's what each one is for.</p>
+      <div class="ext-table" role="table" aria-label="Permissions">
+        <div class="row head" role="row"><span role="columnheader">What Chrome says</span><span role="columnheader">What GoodFit does with it</span></div>
+        <div class="row" role="row">
+          <span role="cell"><b>"Read and change your data on www.linkedin.com and www.naukri.com"</b></span>
+          <span role="cell"><b>Read:</b> the job you open, to score it. <b>Change:</b> only to add the GoodFit panel to the corner of the page. It never edits LinkedIn or Naukri content.</span>
+        </div>
+        <div class="row" role="row">
+          <span role="cell"><b>"…and pedgqakutcltfwsbhpql.supabase.co"</b></span>
+          <span role="cell">That's GoodFit's own database. Used to sign you in and read your profile. Nothing about the jobs you view is sent there.</span>
+        </div>
+        <div class="row" role="row">
+          <span role="cell"><b>The page you click it on</b> <small>(no warning shown)</small></span>
+          <span role="cell">When you click <b>Check this page</b> or use the right-click menu, it can read that one tab, once.</span>
+        </div>
+        <div class="row" role="row">
+          <span role="cell"><b>Right-click menu</b> <small>(no warning shown)</small></span>
+          <span role="cell">Adds "Check my fit with GoodFit" to the menu.</span>
+        </div>
+        <div class="row" role="row">
+          <span role="cell"><b>Storage</b> <small>(no warning shown)</small></span>
+          <span role="cell">Keeps your sign-in and a copy of your profile in the extension, on your computer. Signing out deletes both.</span>
+        </div>
+      </div>
+      <p class="small ext-note">The full details are in our <a href="privacy.html#extension">privacy notice</a>. You can remove the extension any time from <b>chrome://extensions</b>.</p>
+    </section>
+
+    <section class="ext-setup" id="setup" aria-labelledby="h-setup">
+      <div>
+        <h2 class="sec-title" id="h-setup">Set it up</h2>
+        <p>GoodFit scores jobs against your profile, so you'll need a GoodFit account with your resume uploaded.</p>
+      </div>
+      <div class="card ext-card" id="setup-card" aria-live="polite">
+        <p class="muted">Checking your account…</p>
+      </div>
+    </section>
+
+    <section class="ext-faq" aria-labelledby="h-faq">
+      <h2 class="sec-title" id="h-faq">Questions</h2>
+      <details><summary>Will LinkedIn or Naukri know I'm using it?</summary><p>The extension only reads what's already on your screen and doesn't send anything to them or click anything. It works like reading the page yourself.</p></details>
+      <details><summary>Is the score the same as on GoodFit?</summary><p>Yes. The extension uses the same scoring rules as the Matches page. If a job lists less detail on another site, the score can differ slightly and is marked "Limited info".</p></details>
+      <details><summary>Firefox or Safari?</summary><p>Not yet. It works in Chrome, Edge, Brave and other browsers built on Chromium.</p></details>
+      <details><summary>How do I stop using it?</summary><p>Click the GoodFit icon and Sign out, or remove it from chrome://extensions. You can also withdraw your agreement here, or on the Your data page.</p></details>
+    </section>
+  </main>
+
+  <footer class="site">
+    <span>© GoodFit</span>
+    <span>Scored on your device. <a href="privacy.html#extension">Privacy</a></span>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script src="ui.js"></script>
+<script src="extension-page.js"></script>
+</body>
+</html>

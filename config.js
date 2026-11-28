@@ -12,4 +12,8 @@ window.APP_CONFIG = {
   // The GoodFit assistant (chat panel on Matches). Needs the agent function deployed and the
   // ANTHROPIC_API_KEY secret (README step "GoodFit assistant"). While false, the panel explains how to turn it on.
   USE_AGENT: false,
+
+  // The GoodFit extension's Chrome Web Store address (README step 13). While empty, the "GoodFit for Chrome"
+  // page says it's coming soon and shows developer-preview install steps instead of an Add to Chrome button.
+  EXTENSION_URL: "",
 };

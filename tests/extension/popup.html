@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GoodFit popup test</title>
+<link rel="stylesheet" href="../../extension/popup.css">
+</head>
+<body>
+<!-- Runs the real popup (popup.html + popup.js) and the real background.js in one page, with the chrome.* calls faked.
+     Sign-in goes to the real GoodFit Supabase project. -->
+<script>
+const mem = {};
+const handlers = [], changes = [];
+window.chrome = {
+  runtime: {
+    lastError: null,
+    onMessage: { addListener: (f) => handlers.push(f) },
+    onInstalled: { addListener() {} },
+    sendMessage(msg, cb) { handlers.forEach((f) => f(msg, {}, (r) => setTimeout(() => cb(r), 0))); },
+  },
+  contextMenus: { create() {}, onClicked: { addListener() {} } },
+  storage: { local: {
+    get: async (k) => ({ [k]: mem[k] }),
+    set: async (o) => { Object.assign(mem, o); },
+    remove: async (k) => { delete mem[k]; },
+  } },
+  tabs: { query: async () => [{ id: 1, url: "https://www.linkedin.com/jobs/view/1" }], sendMessage: async () => {} },
+  scripting: { executeScript: async () => {} },
+};
+window.importScripts = () => {}; // config.js is loaded below instead
+window.__mem = mem;
+</script>
+<script src="../../extension/lib/config.js"></script>
+<script src="../../extension/background.js"></script>
+<script>
+fetch("../../extension/popup.html").then((r) => r.text()).then((html) => {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.querySelectorAll("script").forEach((s) => s.remove());
+  document.body.insertAdjacentHTML("beforeend", doc.body.innerHTML);
+  const s = document.createElement("script");
+  s.src = "../../extension/popup.js";
+  document.body.appendChild(s);
+});
+</script>
+</body>
+</html>
