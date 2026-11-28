@@ -15,24 +15,23 @@
 <div class="wrap">
   <nav class="top">
     <a class="logo" href="index.html"><span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>GoodFit</a>
-    <div class="nav-tabs hide" id="app-tabs">
+    <div class="nav-tabs">
       <a href="jobs.html">Matches</a>
       <a href="jobs.html#saved">Saved</a>
       <a href="questions.html">Questions</a>
       <a href="dashboard.html?edit=review">Profile</a>
+      <a href="extension.html" class="on" aria-current="page">Extension</a>
     </div>
-    <div class="user-chip hide" id="user-chip">
+    <div class="user-chip">
       <span class="avatar" id="avatar" aria-hidden="true"></span>
       <a class="btn text sm data-link" href="account.html">Your data</a>
       <button class="btn ghost sm" id="logout">Log out</button>
     </div>
-    <div class="nav-links" id="guest-links">
-      <a class="btn ghost sm" href="auth.html">Log in</a>
-      <a class="btn sm" href="auth.html?mode=signup">Get started</a>
-    </div>
   </nav>
 
-  <main class="ext-page">
+  <div id="loading" class="loading-page"><div class="spinner"></div><span>Loading…</span></div>
+
+  <main class="ext-page hide" id="main">
     <div class="ext-welcome hide" id="welcome" role="status">
       <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
       <div><b>GoodFit is installed.</b> Pin it from Chrome's puzzle-piece menu, click it, agree and sign in. Then open any job on LinkedIn or Naukri.</div>
@@ -140,7 +139,7 @@
     <section class="ext-setup" id="setup" aria-labelledby="h-setup">
       <div>
         <h2 class="sec-title" id="h-setup">Set it up</h2>
-        <p>GoodFit scores jobs against your profile, so you'll need a GoodFit account with your resume uploaded.</p>
+        <p>The extension scores jobs against the profile you've set up here, so there's nothing new to fill in.</p>
       </div>
       <div class="card ext-card" id="setup-card" aria-live="polite">
         <p class="muted">Checking your account…</p>

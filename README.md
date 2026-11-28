@@ -235,8 +235,8 @@ same scoring code as the website, on the person's own device, with their GoodFit
 their GoodFit email and password, or try a sample profile). It also gives "Product people at <company>" and
 "Recruiters" links (LinkedIn's own people search, 1st and 2nd connections first) and a referral message to edit
 and send themselves. Nothing from the page is sent anywhere.
-- How people get it: the "GoodFit for Chrome" page (`extension.html`, linked from the landing page, a banner on
-  Matches and Your data) explains what it reads, what it never does and each Chrome permission, and asks them to
+- How people get it: the "Extension" tab inside the app (`extension.html`, logged-in only; also a banner on
+  Matches and a section on Your data) explains what it reads, what it never does and each Chrome permission, and asks them to
   agree (saved as `preferences.extension = { version, agreedAt }`, shown and withdrawable on Your data) before it
   shows how to install. The extension itself also asks once, in its popup, before it reads any page, and opens
   that page with a welcome note after install. If what the extension reads changes, bump the version in
