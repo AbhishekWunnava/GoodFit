@@ -212,6 +212,17 @@ the tools themselves run in the browser on the person's own data, with the same 
 - Cost: each reply is one or more model calls; check real usage with the query at the end of `supabase-agent.sql`.
   If a safety check declines a request, the API retries on a fallback model in the same call (`fallbacks: "default"`).
 
+**12. Your data and the 12-month retention rule (about 5 minutes)**
+The "Your data" page (`account.html`, linked from every logged-in page) lets people download everything GoodFit
+holds about them and delete their account. Accounts not signed in for 12 months are deleted automatically, and
+email / assistant log rows older than 12 months too. What's promised is in `privacy.html`.
+- Edge Functions -> Deploy a new function -> Via editor, named exactly `account`, with
+  `supabase/functions/account/index.ts`. Turn **"Verify JWT" off** (the daily job has no login; the function checks
+  the person's login for deletes and the `FETCH_JOBS_SECRET` password for the daily rule itself).
+- SQL Editor: run `supabase-retention.sql` (needs step 7's Vault values). It schedules the rule daily and runs a
+  dry run first; check what it would delete with the query at the end of that file.
+- Test: sign up a throwaway account, open Your data -> Download my data, then Delete my account.
+
 **11. Put it online (free)**
 - Push the folder to a GitHub repo -> repo Settings -> Pages -> deploy from `main`.
 - Then in Supabase: Authentication -> URL Configuration -> add your Pages URL as the Site URL.
@@ -227,6 +238,8 @@ the tools themselves run in the browser on the person's own data, with the same 
   screening and HR (CTC, notice period), product sense, execution and metrics, strategy and estimation,
   leadership, technical and domain, and questions to ask. Search, category filter, "practised" ticks saved in the browser.
   Works logged in or out; linked from the Matches tabs and the landing page.
+- `privacy.html` the privacy policy; `account.html` + `account.js` Your data (download, delete);
+  `supabase/functions/account/index.ts` account deletion + the 12-month retention rule; `supabase-retention.sql` its schedule
 - `ui.js` shared UI pieces (chips, option pills, icons, toast, and the fit bar `fitBar()` / `fitList()`)
 - `agent.js` the assistant's chat panel and tools (Matches page); `supabase/functions/agent/index.ts` the model turn
   (instructions, tool definitions, limits); `supabase-agent.sql` the usage log

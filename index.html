@@ -11,6 +11,8 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="msg ok deleted-note hide" id="deleted-note" role="status">Your GoodFit account and all its data have been deleted.</div>
+<script>if (new URLSearchParams(location.search).has("deleted")) document.getElementById("deleted-note").classList.remove("hide");</script>
 <div class="wrap">
   <nav class="top">
     <a class="logo" href="index.html"><span class="logo-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>GoodFit</a>
