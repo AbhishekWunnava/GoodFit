@@ -442,10 +442,12 @@ aside.side{position:sticky;top:20px;display:grid;gap:14px}
 .jd li.req{list-style:none}
 .jd .req.met{border-left-color:var(--peacock)}
 .jd .req.miss{border-left-color:var(--marigold)}
+.jd .req.part{border-left-color:var(--marigold);border-left-style:dashed}
 .jd.plain .req{border-left-color:transparent}
 .jd.plain .req-tag{display:none}
 .req-tag{display:flex;align-items:center;gap:5px;font-size:.8rem;font-weight:600;margin:0 0 2px;color:var(--peacock-d)}
 .req-tag.miss{color:var(--warn)}
+.req-tag.part{color:var(--muted)}
 .req-tag svg{width:13px;height:13px;stroke-width:2.6}
 .hl-bar{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;padding:12px 0 14px;margin:0 0 6px;border-bottom:1px solid var(--rule);position:sticky;top:-24px;background:var(--white);z-index:1}
 .hl-bar p{display:flex;gap:8px 16px;flex-wrap:wrap;margin:0;font-size:.92rem}

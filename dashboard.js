@@ -77,8 +77,16 @@ function withRoleInfo(d, aiStandardRole) {
     ...d,
     standardRole: standard,
     roleFamily: standard && window.ROLES ? ROLES.familyOf(standard) : null,
-    seniority: (m && m.seniority) || ResumeParser.seniorityFor(d.years),
+    seniority: (m && m.seniority) || levelForTitle(m, d.years),
   };
+}
+
+// A title with no level word: plain "Product Manager" is the middle rung (APM, PM, Senior PM, Lead...),
+// so years alone shouldn't make a 6-year "Product Manager" Senior. Other titles go by years.
+function levelForTitle(m, years) {
+  const byYears = ResumeParser.seniorityFor(years);
+  if (!m || m.family !== "Product" || years == null) return byYears;
+  return years < 1.5 ? "Entry level" : years < 8 ? "Mid level" : byYears;
 }
 
 // 1. With Supabase set up: Claude reads the resume (supabase/functions/parse-resume).

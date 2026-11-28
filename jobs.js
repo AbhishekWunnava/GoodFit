@@ -18,6 +18,9 @@ function ago(date) {
   return "Over a year ago";
 }
 const expText = (j) => (j.expMin == null ? null : j.expMax != null ? `${j.expMin}–${j.expMax} yrs` : `${j.expMin}+ yrs`);
+// Pay on a card, when the posting states it: "₹25–35 LPA" or "Up to ₹30 LPA".
+const lpaOf = (n) => (n / 1e5).toFixed(n % 1e5 ? 1 : 0);
+const payText = (j) => (j.salaryMin ? `₹${lpaOf(j.salaryMin)}${j.salaryMax && j.salaryMax !== j.salaryMin ? `–${lpaOf(j.salaryMax)}` : ""} LPA` : j.salaryMax ? `Up to ₹${lpaOf(j.salaryMax)} LPA` : null);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Saved / not-interested lists live in this browser for now (per user).
@@ -82,7 +85,7 @@ function filtersFromPrefs(p) {
   return {
     productOnly: true, search: "", roles: [...(p.roles || [])], seniority: p.seniority || "", jobTypes: [...(p.jobTypes || [])],
     workModes: [...(p.workModes || [])], locations: [...(p.locations || [])], relocate: !!p.relocate, exactTitles: !!p.exactTitles,
-    companySizes: [...(p.companySizes || [])], industries: [...(p.industries || [])], avoid: [...(p.avoid || [])], postedWithin: 0,
+    companySizes: [...(p.companySizes || [])], industries: [...(p.industries || [])], avoid: [...(p.avoid || [])], postedWithin: Matcher.DEFAULT_MAX_AGE,
   };
 }
 
@@ -95,7 +98,7 @@ function roleSuggestionsFor() {
 function activeCount() {
   const f = J.filters;
   return [f.search, f.roles.length, f.seniority, f.jobTypes.length, f.workModes.length, f.locations.length,
-    f.companySizes.length, f.industries.length, f.avoid.length, f.postedWithin].filter(Boolean).length;
+    f.companySizes.length, f.industries.length, f.avoid.length, f.postedWithin !== Matcher.DEFAULT_MAX_AGE].filter(Boolean).length;
 }
 
 function renderFilters() {
@@ -115,14 +118,14 @@ function renderFilters() {
     ${field("Job type", optsHTML("jobTypes", ["Full-time", "Contract", "Part-time", "Internship"], f.jobTypes))}
     ${field("Company size", optsHTML("companySizes", OPTIONS.companySizes, f.companySizes))}
     ${field("Industry", optsHTML("industries", industries, f.industries))}
-    ${field("Posted", `<select id="posted"><option value="0">Any time</option><option value="7">Past week</option><option value="30">Past month</option><option value="90">Past 3 months</option></select>`, { for: "posted" })}
+    ${field("Posted", `<select id="posted"><option value="0">Any time</option><option value="7">Past week</option><option value="30">Past month</option><option value="90">Past 3 months</option><option value="180">Past 6 months</option></select>`, { for: "posted" })}
     ${field("Hide jobs mentioning", chipsHTML("avoid", "e.g. night shift"), { for: "chips-avoid" })}
     <div class="actions">
       <button class="btn" id="save-prefs" type="button">Save as my preferences</button>
       <a class="btn text sm" href="dashboard.html?edit=preferences">Pay, notice period and more</a>
     </div>`;
   $("filters").insertAdjacentHTML("beforeend", roleDatalist());
-  $("posted").value = String(f.postedWithin || 0);
+  $("posted").value = String(f.postedWithin ?? Matcher.DEFAULT_MAX_AGE);
 
   const roles = mountChips("roles", f.roles, roleSuggestionsFor, () => changed());
   const locations = mountChips("locations", f.locations, () => CITY_SUGGESTIONS, () => changed());
@@ -160,15 +163,17 @@ async function savePrefs() {
 // ---------- List ----------
 function cardHTML(r) {
   const j = r.job;
-  const pills = [expText(j), j.workMode, j.jobType !== "Full-time" ? j.jobType : null, ago(j.postedAt)].filter(Boolean);
+  const pills = [payText(j), expText(j), j.workMode, j.jobType !== "Full-time" ? j.jobType : null, ago(j.postedAt)].filter(Boolean);
+  // One line on why it fits and one on the main thing against it (see Matcher.summary).
+  const s = Matcher.summary(r);
   return `<button class="job-card ${J.current === j.id ? "active" : ""}" data-id="${esc(j.id)}" type="button">
       <div class="co" style="background:${coColor(j.company)}" aria-hidden="true">${esc(j.company[0])}</div>
       <div class="body">
         <h3>${esc(j.title)}</h3>
         <div class="meta">${esc(j.company)}, ${esc(j.cities.join(", ") || j.location)}</div>
         <div class="pills">${J.saved.has(j.id) ? `<span class="pill saved">Saved</span>` : ""}${r.confidence === "low" ? `<span class="pill">Limited info</span>` : ""}${pills.map((p) => `<span class="pill">${esc(p)}</span>`).join("")}</div>
-        ${r.caps && r.caps.length ? `<div class="why bad">${icon("alert")}<span>${esc(r.caps[0])}</span></div>`
-          : r.good.length ? `<div class="why">${icon("checkCircle")}<span>${esc(r.good.slice(0, 3).join("; "))}</span></div>` : ""}
+        ${s.fit.length ? `<div class="why">${icon("checkCircle")}<span>${esc(s.fit.join("; "))}</span></div>` : ""}
+        ${s.gap ? `<div class="why bad">${icon("alert")}<span>${esc(s.gap)}</span></div>` : ""}
       </div>
       <div class="side"><div class="scoreline"><b>${r.score}</b><span>/100 match</span></div>${fitBar(r.parts)}</div>
     </button>`;
@@ -349,7 +354,10 @@ function markText(raw, ev, inReq, counts) {
 function reqTag(info) {
   if (!info) return "";
   const what = info.kind === "must" ? "Must-have" : "Preferred";
-  return `<span class="req-tag ${info.met ? "ok" : "miss"}">${info.met ? icon("check") : icon("alert")}${what}: ${info.met ? "you have this" : "you may not have this"}</span>`;
+  // Only say "shown in your resume" when everything the line asks for is there; never "you have this".
+  const [cls, ic, text] = info.met === "yes" ? ["ok", "check", "shown in your resume"]
+    : info.met === "partly" ? ["part", "alert", "partly shown in your resume"] : ["miss", "alert", "not shown in your resume"];
+  return `<span class="req-tag ${cls}">${icon(ic)}${what}: ${text}</span>`;
 }
 
 function descriptionHTML(text, ev, counts = {}) {
@@ -364,10 +372,10 @@ function descriptionHTML(text, ev, counts = {}) {
     if (lines.length === 1 && lines[0].length < 70 && !/[.!?]$/.test(lines[0]) && !BULLET.test(lines[0])) return `<h4>${esc(lines[0].replace(/:$/, ""))}</h4>`;
     const items = lines.map((l) => ({ bullet: BULLET.test(l), ...line(l) }));
     if (items.every((x) => x.bullet)) {
-      return `<ul>${items.map((x) => `<li class="${x.info ? `req ${x.info.kind} ${x.info.met ? "met" : "miss"}` : ""}">${reqTag(x.info)}${x.html}</li>`).join("")}</ul>`;
+      return `<ul>${items.map((x) => `<li class="${x.info ? `req ${x.info.kind} ${x.info.met === "yes" ? "met" : x.info.met === "partly" ? "part" : "miss"}` : ""}">${reqTag(x.info)}${x.html}</li>`).join("")}</ul>`;
     }
-    return items.map((x) => (x.bullet ? `<ul><li class="${x.info ? `req ${x.info.kind} ${x.info.met ? "met" : "miss"}` : ""}">${reqTag(x.info)}${x.html}</li></ul>`
-      : `<p class="${x.info ? `req ${x.info.kind} ${x.info.met ? "met" : "miss"}` : ""}">${reqTag(x.info)}${x.html}</p>`)).join("");
+    return items.map((x) => (x.bullet ? `<ul><li class="${x.info ? `req ${x.info.kind} ${x.info.met === "yes" ? "met" : x.info.met === "partly" ? "part" : "miss"}` : ""}">${reqTag(x.info)}${x.html}</li></ul>`
+      : `<p class="${x.info ? `req ${x.info.kind} ${x.info.met === "yes" ? "met" : x.info.met === "partly" ? "part" : "miss"}` : ""}">${reqTag(x.info)}${x.html}</p>`)).join("");
   }).join("");
 }
 

@@ -61,7 +61,7 @@ Score out of 100, in six parts (the fit bar), each point with a reason:
 | Part | Points | What it compares |
 |---|---|---|
 | Role | 23 | archetype 15 (PM↔PM full, PM↔PO 5) + level and people management 8 |
-| Must-haves | 19 | share of the job's checkable must-haves you meet 15 + preferred 4 |
+| Must-haves | 19 | how much of each checkable must-have your resume shows (all, part or none) 15 + preferred 4 |
 | Experience | 15 | your years in product vs years asked in product (else total vs total) 12 + total years 3 |
 | Domain | 28 | sub-vertical 12 / vertical 8 / nearby 5 + business model 10 + segment, market, GTM 6 |
 | Company | 8 | product company / GCC / services vs your background and openness |
@@ -70,12 +70,17 @@ Score out of 100, in six parts (the fit bar), each point with a reason:
 Unknown counts as 70% of a part, not zero. Serious mismatches don't hide a job; they cap its score below
 the 50 "good match" line and the reason is shown first: really a PO / delivery /
 BA role (40), not in your cities and not open to relocating (40), missing a must-have regulation or
-specific space (45), 2+ years short of the years asked (45), likely below your level (55). Each job also
+specific space (45), 2+ years short of the years asked (45), likely below your level (55), more senior
+than the role needs (72 / 62 / 48 for 1–2, 2–4 and 4+ years over the top of its range), written for early-career PMs (60).
+A job's industry comes from its title when the title names one ("… – Travel"), not from the company's pitch.
+Older postings lose points (2 after a month, 5 after two, 10 after three, 20 after six) and jobs older than six
+months are left out unless you pick "Any time". Best-match order shows at most 3 jobs from one company in each
+block of 10. Each job also
 gets a confidence (high / medium / low); "Limited info" jobs (short or search-engine previews) rank below
 equal scores with full descriptions. Only product roles are shown at all (a PM-type title: Product
 Manager / Owner / Lead / Head, APM, SPM, GPM, Director or VP of Product); other jobs are left out.
 Filters (job type, work mode, company size, industry, keywords to
-avoid, posted date, search, exact titles) still remove jobs outright. Jobs scoring under 50 are behind a
+avoid, posted date (past 6 months by default), search, exact titles) still remove jobs outright. Jobs scoring under 50 are behind a
 "lower-fit" button.
 
 ## How resumes are read

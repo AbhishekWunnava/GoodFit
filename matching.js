@@ -8,9 +8,13 @@
 //   Domain      28  same sub-vertical / vertical / nearby (12) + B2B / B2C model (10) + segment, market, GTM (6)
 //   Company      8  product company vs GCC vs services, and what you're open to
 //   Practical    7  location and work mode (5) + pay and notice period (2)
-// Unknown counts as 70% of a part, not zero. Serious mismatches cap the score below 50 (shown first):
+// Unknown counts as 70% of a part, not zero. A must-have line counts by how much of it your profile shows
+// ("Android or iOS, and UX" with only UX = half). Mismatches cap the score (the lowest cap wins):
 // not a product role 25, PO / delivery / BA role 40, not in your cities 40, missing a must-have domain or
-// regulation 45, too few years in product 45, likely below your level 55.
+// regulation 45, too few years in product 45, more senior than the role needs 72 / 62 / 48 (1–2, 2–4, 4+ years
+// over the top of the range), written for early-career PMs 60, likely below your level 55.
+// Older postings then lose points: 2 after a month, 5 after two, 10 after three, 20 after six.
+// Best-match order spreads companies out: at most 3 from one company in each block of 10.
 // Hard filters (product roles only, job type, work mode, company size, industry, keywords to avoid, posted date, search,
 // exact titles) remove a job entirely; the score orders what's left.
 window.Matcher = (() => {
@@ -123,11 +127,15 @@ window.Matcher = (() => {
   // A requirement line is met when you have one of the things it names. If it names something specific
   // (a regulation, or a space like lending), the broad industry alone doesn't count: "KYC/AML experience"
   // isn't met by "fintech".
-  function meetsItem(item, has) {
+  // How much of a requirement line your profile shows, 0 to 1. "Android or iOS products and a strong
+  // understanding of user experience" names two things (mobile, design): showing only design is half, not a yes.
+  function coverage(item, has) {
     const specific = item.concepts.filter((k) => /^(reg:|sv:)/.test(k));
     const pool = specific.length ? [...specific, ...item.concepts.filter((k) => !/^(v:|reg:|sv:)/.test(k))] : item.concepts;
-    return pool.some(has);
+    return pool.length ? pool.filter(has).length / pool.length : 0;
   }
+  // "yes" = everything it names is in your profile, "partly" = some of it, "no" = none of it.
+  const meetsItem = (item, has) => { const c = coverage(item, has); return c >= 1 ? "yes" : c > 0 ? "partly" : "no"; };
 
   const NEUTRAL = 0.7; // share of a part's points when the job (or you) doesn't say
   const adjacent = (a, b) => window.Signals && Signals.ADJACENT.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
@@ -158,26 +166,32 @@ window.Matcher = (() => {
     const myLevel = f.seniority || c.level;
     const want = LEVELS.indexOf(myLevel), have = LEVELS.indexOf(j._level);
     let scope = want < 0 || have < 0 ? 8 * NEUTRAL : want === have ? 8 : Math.abs(want - have) === 1 ? 4 : 0;
-    if (want >= 0 && have >= 0 && want !== have) bad.push(`${j._level} level (you're ${myLevel})`);
-    else if (want >= 0 && want === have) good.push(`${j._level} level`);
+    const lvl = (l) => (/level|above/.test(l) ? l : `${l} level`); // "Mid level", "Senior level", "Director and above"
+    if (want >= 0 && have >= 0 && want !== have) bad.push(`${lvl(j._level)} role (you're ${myLevel})`);
+    else if (want >= 0 && want === have) good.push(`${lvl(j._level)}, like you`);
     if (sig.peopleMgmt && !c.managedPMs) { scope = Math.max(0, scope - 5); tag(bad, "Asks for managing a team of PMs", "people_mgmt"); }
     else if (sig.peopleMgmt && c.managedPMs) tag(good, "Asks for managing PMs, which you've done", "people_mgmt");
     else if (!sig.peopleMgmt && c.managedPMs && want >= 0 && have >= 0 && want - have >= 2) cap(55, `${j._level} individual role; likely below your level`);
     parts.role = role + scope;
 
     // --- Must-haves (19): must-haves 15 + preferred 4
-    const meets = (item) => meetsItem(item, (k) => c.concepts.has(k));
+    const mine = (k) => c.concepts.has(k);
+    const share = (item) => coverage(item, mine);
     const must = sig.must || [], pref = sig.pref || [];
-    const metM = must.filter(meets), missM = must.filter((x) => !meets(x));
-    let reqs = must.length ? 15 * (metM.length / must.length) : 15 * NEUTRAL;
-    if (must.length) tag(metM.length === must.length ? good : bad, `Meets ${metM.length} of ${must.length} checkable must-haves`, "must");
+    const metM = must.filter((x) => share(x) >= 1), partM = must.filter((x) => share(x) > 0 && share(x) < 1);
+    const missM = must.filter((x) => share(x) === 0);
+    let reqs = must.length ? 15 * (must.reduce((a, x) => a + share(x), 0) / must.length) : 15 * NEUTRAL;
+    if (must.length) {
+      const partly = partM.length ? `, partly ${partM.length} more` : "";
+      tag(metM.length === must.length ? good : bad, `Your resume shows ${metM.length} of ${must.length} must-haves we could check${partly}`, "must");
+    }
     // A missed must-have caps the score only when it names a regulation or a specific space (e.g. lending)
     // and isn't softened ("or similar", "preferably", "a plus").
     const hardMiss = missM.find((x) => x.concepts.every((k) => /^(reg:|sv:)/.test(k)) && !/\b(or similar|or other|or related|or equivalent|preferably|ideally|a plus|is a plus|bonus|nice to have)\b/i.test(x.text));
     if (hardMiss) cap(45, `Requires: ${hardMiss.text.length > 90 ? hardMiss.text.slice(0, 87) + "…" : hardMiss.text}`, "must");
-    const metP = pref.filter(meets);
-    reqs += pref.length ? 4 * (metP.length / pref.length) : 4 * NEUTRAL;
-    if (metP.length) tag(good, `Meets ${metP.length} of ${pref.length} preferred`, "pref");
+    const metP = pref.filter((x) => share(x) >= 1);
+    reqs += pref.length ? 4 * (pref.reduce((a, x) => a + share(x), 0) / pref.length) : 4 * NEUTRAL;
+    if (metP.length) tag(good, `Your resume shows ${metP.length} of ${pref.length} nice-to-haves`, "pref");
     parts.must = reqs;
 
     // --- Experience (15): years asked (12) + total years (3)
@@ -194,10 +208,20 @@ window.Matcher = (() => {
       if (min - py <= 1) { exp += 8; tag(bad, `Slight stretch: asks ${asks} ${what}`.trim(), "years"); }
       else { tag(bad, `Asks ${asks} ${what}; you have ${py}`.replace("  ", " "), "years"); cap(45, `Asks ${asks}${what ? " " + what : ""}; you have ${py}`, "years"); }
     } else {
+      // More than a year over the top of the range: a junior role for you. The further over, the lower it ranks,
+      // whatever else matches; a 90 for a role two levels down isn't a good match.
       const over = py - max;
-      exp += over <= 2 ? 10 : over <= 4 ? 6 : 3;
-      tag(bad, `You may be over-qualified (asks ${asks})`, "years");
-      if (over >= 5) cap(55, `Likely below your level (asks ${asks}; you have ${py})`, "years");
+      exp += over <= 2 ? 9 : over <= 4 ? 5 : 2;
+      const why = `More senior than this role needs (asks ${asks}${what ? " " + what : ""}; you have ${py})`;
+      tag(bad, why, "years");
+      cap(over <= 2 ? 72 : over <= 4 ? 62 : 48, why, "years");
+    }
+    // Written for early-career people ("We are looking for early-career Product Managers").
+    const mineYrs = py ?? c.years;
+    if (sig.earlyCareer && mineYrs != null && mineYrs >= 4 && (max == null || max <= 5)) {
+      const why = `Written for early-career PMs; you have ${mineYrs} yrs`;
+      tag(bad, why);
+      cap(60, why);
     }
     if (j.expMin == null || c.years == null) exp += 3 * NEUTRAL;
     else exp += c.years >= j.expMin && (j.expMax == null || c.years <= j.expMax + 2) ? 3 : 1;
@@ -254,7 +278,49 @@ window.Matcher = (() => {
     let total = Math.round(Object.values(parts).reduce((a, b) => a + b, 0));
     caps.sort((a, b) => a[0] - b[0]);
     if (caps.length && total > caps[0][0]) total = caps[0][0];
-    return { score: total, good, bad, parts, caps: caps.map((x) => x[1]), links, confidence: sig.confidence || "medium" };
+    // Older postings rank lower: after two months many are filled, and after six they're likely stale.
+    const age = ageDays(j);
+    const stale = agePenalty(age);
+    if (stale) {
+      total = Math.max(0, total - stale);
+      bad.push(`Posted ${ageText(age)}; it may already be filled`);
+    }
+    return { score: total, good, bad, parts, caps: caps.map((x) => x[1]), links, confidence: sig.confidence || "medium", ageDays: age };
+  }
+
+  const ageDays = (j) => (j._time ? Math.max(0, Math.floor((Date.now() - j._time) / 864e5)) : null);
+  // Points off for age: none in the first month, then more the older it is.
+  const agePenalty = (d) => (d == null || d <= 30 ? 0 : d <= 60 ? 2 : d <= 90 ? 5 : d <= 180 ? 10 : 20);
+  const ageText = (d) => (d < 60 ? `${d} days ago` : d < 365 ? `${Math.round(d / 30)} months ago` : "over a year ago");
+  // Jobs older than this are left out unless you choose "Any time".
+  const DEFAULT_MAX_AGE = 180;
+
+  // What a list card says: the one or two best reasons it fits, in plain words, and the main thing against it.
+  // Leaves out reasons every PM job shares ("A true PM role"), so each card says something different.
+  const SAME_FOR_ALL = /^A true PM role|^Product Manager role, like yours/;
+  function summary(r) {
+    const fit = r.good.filter((g) => !SAME_FOR_ALL.test(g)).slice(0, 2);
+    const minor = /isn't stated/;
+    const gap = r.caps[0] || r.bad.find((b) => !minor.test(b)) || null;
+    return { fit, gap };
+  }
+
+  // Keeps one company from filling the list: at most `per` jobs from the same company in each block of `block`.
+  // The rest move down (in score order) rather than disappear.
+  function spread(rows, per = 3, block = 10) {
+    const out = [];
+    let pool = rows;
+    while (pool.length) {
+      const seen = {}, take = [], left = [];
+      for (const r of pool) {
+        const co = r.job.company.toLowerCase();
+        if (take.length < block && (seen[co] || 0) < per) { take.push(r); seen[co] = (seen[co] || 0) + 1; }
+        else left.push(r);
+      }
+      out.push(...take);
+      pool = left;
+    }
+    return out;
   }
 
   // ---------- Evidence: where in the description the match (or gap) is ----------
@@ -314,12 +380,16 @@ window.Matcher = (() => {
       company: (a, b) => a.job.company.localeCompare(b.job.company) || best(a, b),
     }[opts.sort] || best;
     all.sort(by);
+    // Best match: spread companies out, separately for good matches and lower-fit ones, so a lower-fit job
+    // never jumps above a good one.
+    let list = all;
+    if (by === best && opts.spread !== false) list = [...spread(all.filter((r) => r.score >= 50)), ...spread(all.filter((r) => r.score < 50))];
     const cut = opts.minScore ?? 50;
-    return { shown: all.filter((r) => r.score >= cut), lowFit: all.filter((r) => r.score < cut), total: jobs.length };
+    return { shown: list.filter((r) => r.score >= cut), lowFit: list.filter((r) => r.score < cut), total: jobs.length };
   }
 
   // The six parts of the score and their maximum points, in display order.
   const PARTS = [["role", "Role", 23], ["must", "Must-haves", 19], ["experience", "Experience", 15], ["domain", "Domain", 28], ["company", "Company", 8], ["practical", "Practical", 7]];
 
-  return { prepare, run, candidate, evidence, city, plural, LEVELS, PARTS, titleHit, isProductRole };
+  return { prepare, run, candidate, evidence, summary, city, plural, LEVELS, PARTS, titleHit, isProductRole, DEFAULT_MAX_AGE };
 })();
