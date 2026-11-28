@@ -22,7 +22,7 @@ window.Signals = (() => {
     Edtech: { words: ["edtech", "education", "learning platform", "students", "upskilling", "k-12", "test prep"] },
     "E-commerce": { words: ["e-commerce", "ecommerce", "online shopping", "d2c", "retail", "catalog", "sellers", "shoppers", "quick commerce"] },
     Logistics: { words: ["logistics", "supply chain", "shipping", "freight", "fleet", "last mile", "warehouse", "visibility platform"] },
-    Adtech: { words: ["adtech", "ad tech", "advertising", "advertisers", "programmatic", "ad exchange", "ssp", "dsp", "monetization of ads", "martech", "marketing technology"] },
+    Adtech: { words: ["adtech", "ad tech", "ads", "advertising", "advertisers", "programmatic", "ad exchange", "ssp", "dsp", "monetization of ads", "martech", "marketing technology"] },
     Mobility: { words: ["mobility", "ride-hailing", "ride hailing", "automotive", "dealerships", "vehicles", "electric vehicle"] },
     Travel: { words: ["travel", "hospitality", "hotels", "flights", "bookings"] },
     Foodtech: { words: ["food delivery", "restaurants", "foodtech", "grocery"] },
@@ -221,7 +221,12 @@ window.Signals = (() => {
   // ---------- Public: a job ----------
   function extractJob(j) {
     const text = `${j.title}\n${j.department || ""}\n${j.description || ""}`.toLowerCase();
-    const { verticals, subVerticals } = verticalsIn(text);
+    // The title says what the role works on ("Product Manager II - Travel", "UPI Product"); the rest of the
+    // description often starts with the company's own pitch ("India's leading payments company"). So when the
+    // title names a space, that's the job's space. Doubled because one mention in a title is enough.
+    const tl = String(j.title || "").toLowerCase();
+    const inTitle = verticalsIn(`${tl}\n${tl}`);
+    const { verticals, subVerticals } = inTitle.verticals.length ? inTitle : verticalsIn(text);
     const industryV = Object.keys(VERTICALS).find((v) => v.toLowerCase() === String(j.industry || "").toLowerCase());
     const lists = requirementLists(j.description);
     const words = (j.description || "").split(/\s+/).length;
@@ -245,6 +250,8 @@ window.Signals = (() => {
       must: checkable(lists.must),
       pref: checkable(lists.pref),
       immediate: has(text, ["immediate joiner", "immediate joiners", "join immediately", "notice period of 30 days or less", "15 days notice"]),
+      // Written for people early in their career ("We are looking for early-career Product Managers").
+      earlyCareer: has(text, ["early-career", "early career", "entry-level", "entry level", "freshers", "fresh graduates", "new grads", "new graduates", "recent graduates", "0-2 years", "0 to 2 years", "1-2 years"]),
       words,
     };
     sig.confidence = j.source === "adzuna" || words < 300 ? "low" : (sig.must.length >= 2 || (sig.models.length && sig.verticals.length)) ? "high" : "medium";
@@ -256,6 +263,10 @@ window.Signals = (() => {
   function fromResume(text) {
     const t = String(text || "").toLowerCase();
     const v = verticalsIn(t);
+    // Where you've worked, leaving out internships: a 6-month internship at Deloitte doesn't make
+    // your background "IT services". Drops each "intern" line and the line after it (company and dates).
+    const ls = t.split("\n");
+    const worked = ls.filter((l, i) => !/\b(intern|internship)\b/.test(l) && !(i > 0 && /\b(intern|internship)\b/.test(ls[i - 1]))).join("\n");
     return {
       concepts: conceptsIn(t),
       models: modelsIn(t),
@@ -265,7 +276,7 @@ window.Signals = (() => {
       managedPMs: /\b(led|lead|leading|managed|managing|manage|built and led|mentored|mentoring|grew)\s+(a\s+)?(team\s+of\s+)?(\d+\s+|several\s+|multiple\s+)?(product managers|pms|apms)\b/.test(t)
         || has(t, ["group product manager", "head of product", "director of product", "director product"]),
       // Worked at a services firm too? Keep product companies in the list as well; the person can untick either.
-      companyModels: has(t, SERVICES_COMPANIES.filter((c) => c.length > 3)) ? ["Product", "Services"] : [],
+      companyModels: has(worked, SERVICES_COMPANIES.filter((c) => c.length > 3)) ? ["Product", "Services"] : [],
     };
   }
 

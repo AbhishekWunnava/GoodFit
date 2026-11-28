@@ -136,6 +136,13 @@ window.ResumeParser = (() => {
     return found;
   }
 
+  // A date range belongs to an internship when the line with the dates, or the title line just above it,
+  // says "intern", "internship" or "summer trainee". (Not the line below: that's often the next job.)
+  function isInternship(lines, r) {
+    const near = [lines[r.line - 1], lines[r.line]].filter((l) => l && !isBullet(l));
+    return near.some((l) => /\b(intern|internship|summer\s+trainee)\b/i.test(l));
+  }
+
   function totalYears(rs) {
     if (!rs.length) return null;
     const sorted = rs.map((r) => [r.start, r.end]).sort((a, b) => a[0] - b[0]);
@@ -161,14 +168,19 @@ window.ResumeParser = (() => {
   function roleAndCompany(lines, first) {
     if (!first) return {};
     // Look at the date line and its neighbours, skipping bullet points.
-    const near = [];
+    const near = [], nearAt = [];
     for (let i = Math.max(0, first.line - 2); i <= Math.min(lines.length - 1, first.line + 2); i++) {
       const l = lines[i];
       if (!l.trim() || isBullet(l)) { if (i > first.line) break; else continue; }
       if (i > first.line && RANGE.test(l)) { RANGE.lastIndex = 0; break; }
       RANGE.lastIndex = 0;
       near.push(l);
+      nearAt.push(i);
     }
+    // Which line each part came from: the company usually shares a line with the dates, while the words
+    // after a title on its own line ("Product Manager - Payments Platform") are the team, not the company.
+    const lineOf = new Map();
+    near.forEach((l, k) => parts(l).forEach((p) => { if (!lineOf.has(p)) lineOf.set(p, nearAt[k]); }));
     // Indian titles often split a band from the function: "Deputy Manager - Key Account Management".
     const BAND = /^(deputy|assistant|associate|senior|sr\.?|general|chief|regional|area)?\s*(manager|executive|director|associate|vp|vice president|gm|dgm|agm|am|dm|lead)$/i;
     const joined = near.flatMap((l) => {
@@ -190,11 +202,21 @@ window.ResumeParser = (() => {
     const roleScore = (p) => (knows(p) ? 3 : 0) + (hasLevel(p) ? 1 : 0) - (COMPANY_WORDS.test(p) ? 1 : 0) - (p.split(" ").length > 6 ? 2 : 0) - (isAction(p) ? 5 : 0);
     const compScore = (p) => (COMPANY_WORDS.test(p) ? 2 : 0) - (knows(p) ? 2 : 0) - (p.split(" ").length > 6 ? 2 : 0) - (isAction(p) ? 5 : 0) - (headerOf(p) ? 5 : 0);
     let role = null, company = null;
-    const byRole = [...cands].sort((a, b) => roleScore(b) - roleScore(a));
+    // A title above or on the date line belongs to this job; one below may be the next job's title
+    // (when a job has a single line of detail). Use the lines below only if nothing above is a title.
+    const above = cands.filter((p) => (lineOf.get(p) ?? first.line) <= first.line && roleScore(p) >= 3);
+    const byRole = [...(above.length ? above : cands)].sort((a, b) => roleScore(b) - roleScore(a));
     if (byRole[0] && roleScore(byRole[0]) >= 3) role = byRole[0];
     const rest = cands.filter((p) => p !== role);
-    const byComp = [...rest].sort((a, b) => compScore(b) - compScore(a));
-    if (byComp[0] && compScore(byComp[0]) >= 0) company = byComp[0];
+    const roleLine = role != null ? lineOf.get(role) : null;
+    const place = (p) => {
+      const at = lineOf.get(p);
+      if (at == null) return 0;
+      return (at === first.line ? 1 : 0) - (roleLine != null && at === roleLine && roleLine !== first.line ? 2 : 0);
+    };
+    const compTotal = (p) => compScore(p) + place(p);
+    const byComp = [...rest].sort((a, b) => compTotal(b) - compTotal(a));
+    if (byComp[0] && compTotal(byComp[0]) >= 0) company = byComp[0];
     return { currentRole: role ? role.replace(/\s*\(.*?\)\s*/g, " ").trim() : null, currentCompany: company };
   }
 
@@ -258,11 +280,13 @@ window.ResumeParser = (() => {
     // Experience: prefer the experience section; otherwise any dates outside education.
     const expLines = sec.experience && sec.experience.length ? sec.experience : [...sec.top, ...(sec.summary || [])];
     const expRanges = ranges(expLines);
-    let years = totalYears(expRanges), yearsSource = years != null ? "dates" : null;
+    // Internships don't count towards years of experience (the same rule as yearsFromPositions).
+    const work = expRanges.filter((r) => !isInternship(expLines, r));
+    let years = work.length ? totalYears(work) : expRanges.length ? 0 : null, yearsSource = years != null ? "dates" : null;
     const stated = all.match(/(\d{1,2}(?:\.\d)?)\s*\+?\s*(?:years|yrs)(?:\s+of)?(?:\s+\w+){0,3}?\s+experience/i);
     if (years == null && stated) { years = parseFloat(stated[1]); yearsSource = "stated"; }
 
-    const current = expRanges.find((r) => r.now) || expRanges[0];
+    const current = work.find((r) => r.now) || work[0] || expRanges.find((r) => r.now) || expRanges[0];
     // No dates at all? Fall back to the first lines of the experience section.
     const anchor = current || (sec.experience && sec.experience.length ? { line: 0 } : null);
     const { currentRole, currentCompany } = roleAndCompany(expLines, anchor);

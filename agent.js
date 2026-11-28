@@ -254,7 +254,9 @@ const Agent = (() => {
         ...brief(r), url: j.url, department: j.department, industry: j.industry, company_size: j.companySize,
         score_parts: Object.fromEntries(Matcher.PARTS.map(([k, n, max]) => [n, `${Math.round(r.parts[k] || 0)}/${max}`])),
         ranked_low_because: r.caps, good: r.good, gaps: r.bad,
-        must_haves_met: lines.filter(([, v]) => v.kind === "must" && v.met).length, must_haves_missed: lines.filter(([, v]) => v.kind === "must" && !v.met).length,
+        must_haves_shown: lines.filter(([, v]) => v.kind === "must" && v.met === "yes").length,
+        must_haves_partly_shown: lines.filter(([, v]) => v.kind === "must" && v.met === "partly").length,
+        must_haves_not_shown: lines.filter(([, v]) => v.kind === "must" && v.met === "no").length,
         description: `<job_description>\n${(j.description || "").slice(0, 6000)}\n</job_description>`,
       };
     },
