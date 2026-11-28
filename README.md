@@ -228,6 +228,26 @@ email / assistant log rows older than 12 months too. What's promised is in `priv
   dry run first; check what it would delete with the query at the end of that file.
 - Test: sign up a throwaway account, open Your data -> Download my data, then Delete my account.
 
+**13. GoodFit browser extension (about 5 minutes to try; Web Store optional)**
+The extension (`extension/`) shows a GoodFit fit score on LinkedIn and Naukri job pages, and on any other job
+page when you click "Check this page" or right-click the description -> "Check my fit with GoodFit". It uses the
+same scoring code as the website, on the person's own device, with their GoodFit profile (they sign in with
+their GoodFit email and password, or try a sample profile). It also gives "Product people at <company>" and
+"Recruiters" links (LinkedIn's own people search, 1st and 2nd connections first) and a referral message to edit
+and send themselves. Nothing from the page is sent anywhere.
+- Try it: Chrome -> `chrome://extensions` -> turn on Developer mode -> Load unpacked -> choose the `extension` folder.
+  Pin GoodFit from the puzzle-piece menu, click it, sign in (or "Try with a sample profile") and open a LinkedIn job.
+- After changing `matching.js`, `signals.js`, `roles.js`, `normalize.js` or `config.js`, run
+  `python3 scripts/sync-extension.py` (the extension keeps its own copy; a pull request check fails if you forget).
+- Test without Chrome: open `tests/extension/fixture.html` (LinkedIn / Naukri / JobPosting / any-page layouts) and
+  `tests/extension/popup.html` from a local server.
+- Publish (optional): a Chrome Web Store developer account costs a one-time $5. Zip the `extension` folder, upload it,
+  and use `https://goodfitjobsonly.com/privacy.html#extension` as the privacy policy. Bump `version` in
+  `extension/manifest.json` for each new upload.
+- Note: LinkedIn's terms are strict about extensions that collect its data. This one only reads the job you open,
+  only to score it for you, sends nothing anywhere and automates nothing, which is how similar job-fit
+  extensions work, but there's no promise LinkedIn won't change its pages or its stance.
+
 **11. Put it online (free)**
 - Push the folder to a GitHub repo -> repo Settings -> Pages -> deploy from `main`.
 - Then in Supabase: Authentication -> URL Configuration -> add your Pages URL as the Site URL.
@@ -257,6 +277,9 @@ email / assistant log rows older than 12 months too. What's promised is in `priv
   `email-preview.html` shows your email; `scripts/send-reports.mjs` + `.github/workflows/match-emails.yml` send them;
   `supabase-reports.sql` the send log
 - `supabase-jobs.sql` job tables (`job_sources`, `jobs`); `supabase-jobs-schedule.sql` the daily refresh; `supabase-jobs-search.sql` saved searches for the Adzuna job search engine; `supabase-jobs-add-companies.sql` 16 more companies
+- `extension/` the Chrome extension: `manifest.json`, `background.js` (sign-in, profile copy), `content.js` (reads the
+  job, scores it, the panel), `popup.*`; `extension/lib/` copies of the scoring code made by `scripts/sync-extension.py`;
+  `tests/extension/` test pages that run it without Chrome
 - `supabase/functions/fetch-jobs/` the daily job refresher: `index.ts` (fetch + save), `normalize.js`
   (turns Greenhouse / Lever / Ashby postings into GoodFit's job shape; plain JS, also loads in a browser)
 

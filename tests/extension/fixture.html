@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GoodFit extension test page</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 0; background: #f3f2ef; color: #1d1d1d; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 120px; background: #fff; min-height: 100vh; }
+  .bar { font-size: 13px; color: #555; margin-bottom: 16px; }
+  .bar a { margin-right: 10px; }
+</style>
+</head>
+<body>
+<!-- Test page for the extension's content script (no Chrome needed).
+     ?site=linkedin | naukri | jsonld | generic   &job=<index in jobs.json>   &profile=sample | none
+     It builds a page shaped like that site, fakes the chrome.* calls content.js uses, then loads the extension's scripts. -->
+<div class="wrap" id="page">
+  <div class="bar">Layout:
+    <a href="?site=linkedin">LinkedIn</a><a href="?site=naukri">Naukri</a><a href="?site=jsonld">JobPosting data</a><a href="?site=generic">Any page</a><a href="?site=linkedin&profile=none">Signed out</a><a href="?site=linkedin&spa=1">LinkedIn, switch jobs</a>
+  </div>
+  <div id="job"></div>
+</div>
+<script>
+const q = new URLSearchParams(location.search);
+const site = q.get("site") || "linkedin";
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// jobs.json descriptions are plain text ("• item" bullets, blank-line paragraphs); turn them back into HTML.
+const toHTML = (t) => t.split(/\n{2,}/).map((b) => {
+  const ls = b.split("\n").filter(Boolean);
+  if (ls.every((l) => l.startsWith("•"))) return `<ul>${ls.map((l) => `<li>${esc(l.slice(1).trim())}</li>`).join("")}</ul>`;
+  if (ls.length === 1 && ls[0].length < 70) return `<p><strong>${esc(ls[0])}</strong></p>`;
+  return `<p>${ls.map(esc).join("<br>")}</p>`;
+}).join("");
+
+const PROFILE = {
+  mode: "sample", email: null,
+  details: { name: "Sample PM", currentRole: "Senior Product Manager", years: 7, seniority: "Senior", skills: ["SQL", "APIs", "A/B testing", "Roadmapping"],
+    background: { archetype: "pm", pmYears: 5, models: ["B2B"], verticals: ["Fintech"], subVerticals: ["Fintech: Payments"], companyModels: ["Product"] } },
+  prefs: { roles: ["Product Manager", "Senior Product Manager"], jobTypes: ["Full-time"], locations: ["Bengaluru"], seniority: "Senior" },
+};
+
+// The parts of chrome.* that content.js uses.
+const listeners = { msg: [], store: [] };
+const mem = {};
+window.chrome = {
+  runtime: {
+    lastError: null,
+    sendMessage(msg, cb) { setTimeout(() => cb(msg.type === "get-profile" ? { ok: true, data: q.get("profile") === "none" ? null : PROFILE } : { ok: false }), 30); },
+    onMessage: { addListener: (f) => listeners.msg.push(f) },
+  },
+  storage: {
+    local: { get: (k, cb) => cb({ [k]: mem[k] }), set: (o) => Object.assign(mem, o) },
+    onChanged: { addListener: (f) => listeners.store.push(f) },
+  },
+};
+// Simulates the popup's "Check this page" / the right-click menu.
+window.scoreNow = (selection) => listeners.msg.forEach((f) => f({ type: "score", selection }));
+
+function build(j) {
+  const html = toHTML(j.description);
+  if (site === "linkedin") {
+    window.__goodfitTestHost = "www.linkedin.com";
+    return `<div class="jobs-details"><div class="job-details-jobs-unified-top-card__company-name"><a href="#">${esc(j.company)}</a></div>
+      <h1 class="job-details-jobs-unified-top-card__job-title">${esc(j.title)}</h1>
+      <div class="job-details-jobs-unified-top-card__primary-description-container"><span>${esc(j.location)}</span> · <span>2 days ago</span> · <span>Over 100 applicants</span></div>
+      <div class="job-details-fit-level-preferences"><span>${esc(j.workMode || "On-site")}</span><span>Full-time</span></div>
+      <article class="jobs-description__container"><div class="jobs-box__html-content" id="job-details"><h2>About the job</h2>${html}</div></article></div>`;
+  }
+  if (site === "naukri") {
+    window.__goodfitTestHost = "www.naukri.com";
+    return `<section class="styles_job-header-container__abc"><h1 class="styles_jd-header-title__rZwM1">${esc(j.title)}</h1>
+      <div class="styles_jd-header-comp-name__MvqAI"><a href="#">${esc(j.company)}</a><span>4.1</span><a>812 Reviews</a></div>
+      <div class="styles_jhc__exp__k_giM"><span>${j.expMin ?? 5}${j.expMax ? `-${j.expMax}` : "-10"} Years</span></div>
+      <span class="styles_jhc__location__W_pVs"><a>${esc(j.cities.join(", ") || j.location)}</a></span></section>
+      <section class="styles_job-desc-container__txpYf"><div class="styles_JDC__dang-inner-html__h0K4t">${html}</div></section>`;
+  }
+  if (site === "jsonld") {
+    const ld = { "@context": "https://schema.org", "@type": "JobPosting", title: j.title, description: html, datePosted: j.postedAt,
+      hiringOrganization: { "@type": "Organization", name: j.company }, employmentType: "FULL_TIME",
+      jobLocation: [{ "@type": "Place", address: { "@type": "PostalAddress", addressLocality: j.cities[0] || "Bengaluru", addressRegion: "Karnataka", addressCountry: "IN" } }] };
+    const s = document.createElement("script");
+    s.type = "application/ld+json";
+    s.textContent = JSON.stringify(ld);
+    document.head.appendChild(s);
+    return `<h1>${esc(j.title)}</h1><p>${esc(j.company)}, ${esc(j.location)}</p><div class="desc">${html}</div>`;
+  }
+  return `<nav><a href="#">Careers home</a> · <a href="#">Teams</a></nav><h1>${esc(j.title)}</h1><p>${esc(j.location)}</p>
+    <div class="content"><div>${html}</div><button>Apply now</button></div><footer><p>Equal opportunity employer. Cookies and privacy.</p></footer>`;
+}
+
+(async () => {
+  const d = await fetch("../../jobs.json").then((r) => r.json());
+  const n = Number(q.get("job") ?? 151);
+  document.getElementById("job").innerHTML = build(d.jobs[n]);
+  for (const f of ["roles.js", "signals.js", "matching.js", "jobtext.js"]) await load(`../../extension/lib/${f}`);
+  await load("../../extension/content.js");
+  if (site === "generic" || site === "jsonld") setTimeout(() => scoreNow(""), 300); // these need the popup button
+  // LinkedIn swaps the job in place when you click another one in the list.
+  if (q.get("spa")) setTimeout(() => {
+    history.pushState(null, "", location.pathname + "?site=linkedin&spa=1&currentJobId=167");
+    document.getElementById("job").innerHTML = build(d.jobs[167]);
+  }, 2500);
+})();
+function load(src) { return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.body.appendChild(s); }); }
+</script>
+</body>
+</html>

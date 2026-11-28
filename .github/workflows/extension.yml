@@ -1,0 +1,27 @@
+# Checks that the browser extension's copy of the scoring code matches the website's (README step 13).
+name: Extension
+
+on:
+  pull_request:
+    paths:
+      - extension/**
+      - roles.js
+      - signals.js
+      - matching.js
+      - config.js
+      - supabase/functions/fetch-jobs/normalize.js
+      - scripts/sync-extension.py
+      - .github/workflows/extension.yml
+
+permissions:
+  contents: read
+
+jobs:
+  in-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: extension/lib matches the website's scoring code
+        run: python3 scripts/sync-extension.py --check
+      - name: manifest is valid JSON
+        run: python3 -m json.tool extension/manifest.json > /dev/null
