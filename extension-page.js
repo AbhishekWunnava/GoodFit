@@ -1,4 +1,4 @@
-// "GoodFit for Chrome" page: explains the extension, and records that you agreed to how it works before
+// "GoodFit for Chrome" page (the Extension tab, logged-in only): explains the extension, and records that you agreed to how it works before
 // showing how to install it. The agreement is kept with your profile (preferences.extension = { version, agreedAt })
 // so it shows on Your data and can be withdrawn. The extension also asks once itself, before it reads any page.
 const EXT_TERMS_VERSION = 1; // bump when what the extension reads or does changes, so people agree again
@@ -24,13 +24,6 @@ async function saveAgreement(value) {
 
 function render() {
   const card = $("setup-card");
-  const back = encodeURIComponent("extension.html#setup");
-  if (!X.user) {
-    card.innerHTML = `<h3>Start with a GoodFit account</h3>
-      <p>Create a free account and upload your resume (about 3 minutes). Then come back here to add the extension.</p>
-      <div class="data-btns"><a class="btn" href="auth.html?mode=signup&next=${back}">Create an account</a><a class="btn ghost" href="auth.html?next=${back}">Log in</a></div>`;
-    return;
-  }
   if (!X.profile || X.profile.step !== "review") {
     card.innerHTML = `<h3>Finish your profile first</h3>
       <p>The extension compares jobs with your resume details and preferences. Finish setting them up, then come back.</p>
@@ -41,7 +34,7 @@ function render() {
   if (!a) {
     card.innerHTML = `<h3>Before you install</h3>
       <ul class="ext-list yes compact">
-        <li>It reads the job you open on LinkedIn and Naukri, and on other pages only when you ask.</li>
+        <li>It reads the job you open on LinkedIn and Naukri, and on other sites only when you ask or turn that site on.</li>
         <li>It scores that job on your computer and sends it nowhere.</li>
         <li>It reads your GoodFit profile to compare, and keeps a copy in the extension until you sign out.</li>
         <li>It never applies, clicks, messages or posts for you.</li>
@@ -79,22 +72,24 @@ function render() {
 }
 
 async function init() {
+  // Part of the logged-in app: signed out, log in first and come back here.
+  const { data } = await db.auth.getSession();
+  if (!data.session) {
+    location.href = "auth.html?next=" + encodeURIComponent("extension.html" + location.search.replace(/[^?a-z0-9=&]/gi, ""));
+    return;
+  }
+  X.user = data.session.user;
+  $("avatar").textContent = (X.user.email || "?")[0].toUpperCase();
+  $("logout").onclick = async () => { await db.auth.signOut(); location.href = "index.html"; };
+  const { data: profile } = await db.from("profiles").select("*").maybeSingle();
+  X.profile = profile || null;
   if (new URLSearchParams(location.search).has("installed")) $("welcome").classList.remove("hide");
   $("setup-card").tabIndex = -1;
-  const { data } = await db.auth.getSession();
-  if (data.session) {
-    X.user = data.session.user;
-    $("app-tabs").classList.remove("hide");
-    $("user-chip").classList.remove("hide");
-    $("guest-links").classList.add("hide");
-    $("avatar").textContent = (X.user.email || "?")[0].toUpperCase();
-    $("logout").onclick = async () => { await db.auth.signOut(); location.href = "index.html"; };
-    const { data: profile } = await db.from("profiles").select("*").maybeSingle();
-    X.profile = profile || null;
-  }
   render();
-  // Coming back from login to #setup: the card has only just been filled in, so scroll to it now.
+  $("loading").classList.add("hide");
+  $("main").classList.remove("hide");
+  // Coming from the Matches banner or Your data to #setup: the card has only just been filled in, so scroll now.
   if (location.hash === "#setup") $("setup").scrollIntoView();
 }
 
-init().catch((e) => { console.error(e); $("setup-card").innerHTML = `<p class="msg err">Something went wrong: ${esc(e.message)}</p>`; });
+init().catch((e) => { console.error(e); $("loading").classList.add("hide"); $("main").classList.remove("hide"); $("setup-card").innerHTML = `<p class="msg err">Something went wrong: ${esc(e.message)}</p>`; });

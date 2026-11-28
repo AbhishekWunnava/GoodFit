@@ -100,7 +100,7 @@ render();
 // Only plain GoodFit page names are accepted, never another site.
 const nextPage = (() => {
   const n = new URLSearchParams(location.search).get("next") || "";
-  return /^[a-z-]+\.html(#[a-z-]+)?$/.test(n) ? n : "dashboard.html";
+  return /^[a-z-]+\.html(\?[a-z0-9=&]+)?(#[a-z-]+)?$/.test(n) ? n : "dashboard.html";
 })();
 
 // Already logged in? Go straight on.

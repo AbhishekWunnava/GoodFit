@@ -1,7 +1,8 @@
 // GoodFit extension, page part: reads the job you're looking at, scores it against your GoodFit profile
 // with the same code as the website (lib/matching.js), and shows the result in a small panel.
-// Runs by itself on LinkedIn and Naukri job pages; on any other page when you click "Check this page"
-// in the GoodFit popup or "Check my fit with GoodFit" in the right-click menu.
+// Runs by itself on LinkedIn and Naukri, and on other job sites you've turned on in the popup ("Always check
+// jobs on this site"); on any other page once, when you click "Check this page" or use the right-click menu.
+// Once it's on a page it keeps the panel open and re-scores when you move to another job, until you hide it.
 // Only the page you're viewing is read, only when you view it, and nothing from it leaves your browser.
 (() => {
   if (window.__goodfit) return;
@@ -9,6 +10,8 @@
 
   const HOST = window.__goodfitTestHost || location.hostname; // tests/extension/ pretends to be a job site
   const AUTO = /(^|\.)linkedin\.com$|(^|\.)naukri\.com$/.test(HOST);
+  // On LinkedIn the script loads on every page (it's one app), but only looks for jobs in the Jobs section.
+  const inJobsArea = () => !/linkedin\.com$/.test(HOST) || !!window.__goodfitTestHost || location.pathname.startsWith("/jobs");
   const SITE = "https://goodfitjobsonly.com";
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const clean = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
@@ -103,30 +106,50 @@
     return /^(localhost|\d+)$/.test(name || "") ? "" : (name || "").replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
-  function fromAnyPage(selection) {
+  // Where the open job is shown, on sites that list jobs next to it (LinkedIn's search page).
+  const DETAIL_ROOTS = [".jobs-search__job-details--container", ".jobs-search__job-details", ".scaffold-layout__detail", ".job-view-layout", "main", "body"];
+
+  // The job title: the heading closest above the description, else the page's main heading.
+  function titleNear(el) {
+    for (let a = el, i = 0; a && i < 8; a = a.parentElement, i++) {
+      for (const h of a.querySelectorAll("h1, h2")) {
+        if (el.contains(h)) continue;
+        const t = clean(h.textContent);
+        if (t.length >= 4 && t.length <= 150 && !/^(about the job|job description|search results|jobs you may|people also)/i.test(t)) return { el: h, text: t };
+      }
+    }
     const h1 = document.querySelector("h1");
-    const title = clean((h1 || {}).innerText || document.title.split(/[|–-]/)[0]);
-    // The city is usually printed just under the job title.
-    const near = h1 ? clean((h1.parentElement || h1).innerText).slice(0, 400) : "";
-    const company = companyGuess();
-    if (selection && selection.length > 200) return { title, company, location: T.citiesIn(near).join(", "), text: selection, postedAt: null };
+    return { el: h1, text: clean((h1 || {}).textContent || document.title.split(/[|–-]/)[0]) };
+  }
+
+  function fromAnyPage(selection) {
+    const scope = pick(DETAIL_ROOTS) || document.body;
     let best = null, bestScore = 0;
-    for (const el of document.querySelectorAll("main, article, section, div")) {
-      const t = el.innerText || "";
+    // textContent (not innerText) so this doesn't force the page to lay itself out for every block.
+    for (const el of scope.querySelectorAll("article, section, div")) {
+      const t = el.textContent || "";
       if (t.length < 500 || t.length > 25000) continue;
       const hits = (t.match(JD_WORDS) || []).length;
       const score = hits * 1000 - t.length / 50; // most job words, then the tightest block
       if (hits >= 3 && score > bestScore) { best = el; bestScore = score; }
     }
+    const head = best ? titleNear(best) : titleNear(scope);
+    // The city and company are usually printed just under the job title.
+    const box = head.el ? (head.el.closest("section, header, div") || head.el.parentElement || head.el) : null;
+    // innerText here (one small block): textContent runs words together ("App ProductNoida") and hides the city.
+    const near = box ? clean(box.innerText || box.textContent).slice(0, 500) : "";
+    const coLink = box && box.parentElement && box.parentElement.querySelector('a[href*="/company/"]');
+    const company = (coLink && clean(coLink.textContent).slice(0, 80)) || companyGuess();
     const loc = T.citiesIn(near).join(", ");
-    if (!best && selection) return { title, company, location: loc, text: selection, postedAt: null };
-    return best ? { title, company, location: loc, html: best.innerHTML, postedAt: null } : null;
+    if (selection && selection.length > 200) return { title: head.text, company, location: loc, text: selection, postedAt: null };
+    return best ? { title: head.text, company, location: loc, html: best.innerHTML, postedAt: null } : null;
   }
 
   // The job in the same shape as the website's jobs (see normalize.js), so matching.js can score it.
-  // The page-wide search for a description only runs when asked (it's too slow to repeat every second).
-  function readJob(selection, asked) {
-    const raw = (AUTO && fromSite()) || fromJsonLd() || (asked ? fromAnyPage(selection) : null);
+  // The page-wide search for a description ("deep") runs when asked and for a few seconds after you move to
+  // another job, not every second: it's slower than the site-specific checks.
+  function readJob(selection, deep) {
+    const raw = (AUTO && fromSite()) || fromJsonLd() || (deep ? fromAnyPage(selection) : null);
     if (!raw) return null;
     const description = raw.text ? raw.text.trim() : T.htmlToText(raw.html || "");
     if (description.length < 150 || !raw.title) return null;
@@ -204,7 +227,7 @@
     ].join("\n");
   }
 
-  let host, root, state = { open: true, closedFor: null, last: null, key: null };
+  let host, root, state = { open: true, last: null, key: null };
 
   function mount() {
     if (host && document.documentElement.contains(host)) return;
@@ -233,7 +256,7 @@
     return pill + `
       <section class="card" role="dialog" aria-label="GoodFit: how this job fits you">
         <header><span class="mark">${CHECK}</span><span class="brand">GoodFit</span><span class="sp"></span>
-          <button class="ic" data-act="min" aria-label="Minimise">–</button><button class="ic" data-act="close" aria-label="Close for this job">×</button></header>
+          <button class="ic" data-act="min" aria-label="Hide (the score stays in the corner)" title="Hide (the score stays in the corner)">×</button></header>
         <div class="body">
           <div class="top">
             <div class="score"><b>${r.score}</b><span>/100</span></div>
@@ -262,7 +285,7 @@
   function message(title, text) {
     return `<button class="pill" data-act="open"><span class="mark">${CHECK}</span>GoodFit</button>
       <section class="card"><header><span class="mark">${CHECK}</span><span class="brand">GoodFit</span><span class="sp"></span>
-        <button class="ic" data-act="min" aria-label="Minimise">–</button><button class="ic" data-act="close" aria-label="Close">×</button></header>
+        <button class="ic" data-act="min" aria-label="Hide" title="Hide">×</button></header>
         <div class="body"><h3>${esc(title)}</h3><p>${text}</p></div></section>`;
   }
 
@@ -276,9 +299,6 @@
       gf.classList.toggle("open", state.open);
       gf.classList.toggle("min", !state.open);
       try { chrome.storage.local.set({ panelOpen: state.open }); } catch {}
-    } else if (act === "close") {
-      state.closedFor = state.key;
-      host.remove();
     } else if (act === "note") {
       root.querySelector(".note").classList.toggle("hide");
     } else if (act === "copy") {
@@ -301,46 +321,64 @@
     catch { res(false); }
   });
 
-  async function update(force, selection) {
+  // force: you asked (popup or right-click). deep: also look for a description anywhere on the page.
+  // Returns true when a job was found.
+  async function update(force, selection, deep) {
     if (!(await consented())) {
       if (force) { state.key = null; state.open = true; render(message("Set up GoodFit first", "Click the GoodFit icon in your browser's toolbar and read what the extension does. It won't read any page until you agree.")); }
-      return;
+      return false;
     }
-    const job = readJob(selection, force);
+    if (!force && !inJobsArea()) return false;
+    const job = readJob(selection, force || deep);
     if (!job) {
       if (force) { state.key = null; state.open = true; render(message("No job description found here", "Open a single job's page, or select the job description text, right-click it and choose <b>Check my fit with GoodFit</b>.")); }
-      return;
+      return false;
     }
     const key = job.url + "|" + job.title + "|" + job.description.length;
-    if (!force && key === state.key) return;
-    if (!force && state.closedFor === key) return;
+    if (!force && key === state.key) return true;
     state.key = key;
     const res = await ask({ type: "get-profile" });
     const profile = res.ok ? res.data : null;
     if (!profile) {
       render(message("See how this job fits you", `Click the GoodFit icon in your browser's toolbar to sign in, or try it with a sample profile. No account yet? <a href="${SITE}/auth.html?mode=signup" target="_blank" rel="noopener">Create one on GoodFit</a>.`));
-      return;
+      return true;
     }
     // Non-PM roles are still scored (they're capped low) and labelled "Not a product role".
     const s = scoreJob(job, profile);
     state.last = { s, profile };
     if (force) state.open = true;
     render(view(s, profile));
+    return true;
+  }
+
+  // Watching: many job sites (LinkedIn, Naukri, Workday…) switch jobs without loading a new page, so check
+  // about every second. When the address or page title changes, also search the page more deeply for a few
+  // seconds, while the new description loads.
+  let lastSig = null, deepTries = 0;
+  async function tick() {
+    if (document.hidden) return;
+    const sig = location.href + "|" + document.title;
+    if (sig !== lastSig) { lastSig = sig; deepTries = 6; }
+    const found = await update(false, "", deepTries > 0);
+    if (deepTries > 0) deepTries = found && deepTries <= 3 ? 0 : deepTries - 1;
   }
 
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg && msg.type === "score") { state.closedFor = null; update(true, msg.selection); }
+    if (msg && msg.type === "score") { state.open = true; update(true, msg.selection); }
   });
   chrome.storage.onChanged.addListener((changes) => {
     if (changes.consent && !changes.consent.newValue && host) { host.remove(); state.key = null; return; } // withdrawn
-    if ((changes.profile || changes.consent) && (state.key || AUTO)) { state.key = null; update(!AUTO && !!host); }
+    if (changes.profile || changes.consent) { state.key = null; lastSig = null; }
+    if (changes.panelOpen && root) {
+      state.open = changes.panelOpen.newValue !== false;
+      const gf = root.querySelector(".gf");
+      if (gf) { gf.classList.toggle("open", state.open); gf.classList.toggle("min", !state.open); }
+    }
   });
 
-  // LinkedIn and Naukri change the job without loading a new page, so check every second or so.
-  if (AUTO) {
-    try { chrome.storage.local.get("panelOpen", (v) => { if (v && v.panelOpen === false) state.open = false; update(false); }); } catch { update(false); }
-    setInterval(() => { if (!document.hidden) update(false); }, 1200);
-  }
+  // Open or hidden is remembered across jobs, pages and tabs until you change it.
+  try { chrome.storage.local.get("panelOpen", (v) => { if (v && v.panelOpen === false) state.open = false; tick(); }); } catch { tick(); }
+  setInterval(tick, 1200);
 
   const CSS = `
   :host, .gf { --paper:#F4F6F3; --card:#FFFFFF; --ink:#1A2233; --soft:#4A5568; --peacock:#0E5A57; --peacock-soft:#E3EFEC;

@@ -82,6 +82,30 @@ async function scoreTab(tabId, selection) {
   await chrome.tabs.sendMessage(tabId, { type: "score", selection: selection || "" });
 }
 
+// "Always check jobs on this site": after you allow the site in Chrome's prompt (popup), the page part is
+// registered for it, so it runs there by itself like on LinkedIn. Turning it off removes both.
+const siteId = (origin) => "site:" + origin;
+async function watchedSites() {
+  const regs = await chrome.scripting.getRegisteredContentScripts();
+  return regs.filter((r) => r.id.startsWith("site:")).map((r) => r.id.slice(5));
+}
+async function watchSite(origin, tabId) {
+  const id = siteId(origin);
+  const have = await chrome.scripting.getRegisteredContentScripts({ ids: [id] });
+  if (!have.length) await chrome.scripting.registerContentScripts([{ id, matches: [origin + "/*"], js: FILES, runAt: "document_idle", persistAcrossSessions: true }]);
+  if (tabId != null) await scoreTab(tabId);
+  return watchedSites();
+}
+async function unwatchSite(origin) {
+  await chrome.scripting.unregisterContentScripts({ ids: [siteId(origin)] }).catch(() => {});
+  await chrome.permissions.remove({ origins: [origin + "/*"] }).catch(() => {});
+  return watchedSites();
+}
+// Permission taken away in Chrome's own settings: stop running there too.
+chrome.permissions.onRemoved.addListener(({ origins = [] }) => {
+  origins.forEach((o) => chrome.scripting.unregisterContentScripts({ ids: [siteId(o.replace(/\/\*$/, ""))] }).catch(() => {}));
+});
+
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   const handlers = {
     "get-profile": () => getProfile(),
@@ -90,6 +114,9 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     "use-sample": async () => { await signOut(); await store.set("profile", { ...SAMPLE, fetchedAt: Date.now() }); return store.get("profile"); },
     "sign-out": async () => { await signOut(); return null; },
     "score-tab": () => scoreTab(msg.tabId, msg.selection),
+    "watch-site": () => watchSite(msg.origin, msg.tabId),
+    "unwatch-site": () => unwatchSite(msg.origin),
+    "watched-sites": () => watchedSites(),
   };
   const run = handlers[msg && msg.type];
   if (!run) return false;
