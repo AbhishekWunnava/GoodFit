@@ -24,8 +24,15 @@ window.chrome = {
     set: async (o) => { Object.assign(mem, o); },
     remove: async (k) => { delete mem[k]; },
   } },
-  tabs: { query: async () => [{ id: 1, url: "https://www.linkedin.com/jobs/view/1" }], sendMessage: async () => {} },
-  scripting: { executeScript: async () => {} },
+  // ?tab=<url>: the page the popup was opened on (default a LinkedIn job).
+  tabs: { query: async () => [{ id: 1, url: new URLSearchParams(location.search).get("tab") || "https://www.linkedin.com/jobs/view/1" }], sendMessage: async () => {} },
+  scripting: {
+    executeScript: async () => {},
+    getRegisteredContentScripts: async (f) => (window.__regs || []).filter((r) => !f || !f.ids || f.ids.includes(r.id)),
+    registerContentScripts: async (list) => { window.__regs = [...(window.__regs || []), ...list]; },
+    unregisterContentScripts: async ({ ids }) => { window.__regs = (window.__regs || []).filter((r) => !ids.includes(r.id)); },
+  },
+  permissions: { onRemoved: { addListener() {} }, request: (o, cb) => setTimeout(() => cb(true), 0), remove: async () => true },
 };
 window.importScripts = () => {}; // config.js is loaded below instead
 window.__mem = mem;

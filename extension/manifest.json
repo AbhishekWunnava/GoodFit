@@ -2,22 +2,51 @@
   "manifest_version": 3,
   "name": "GoodFit: job fit for product managers",
   "short_name": "GoodFit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "See how well a LinkedIn or Naukri job fits your resume, what it asks that your resume doesn't show, and who to ask for a referral.",
-  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
   "action": {
     "default_title": "GoodFit",
     "default_popup": "popup.html",
-    "default_icon": { "16": "icons/16.png", "32": "icons/32.png" }
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png"
+    }
   },
-  "background": { "service_worker": "background.js" },
-  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
-  "host_permissions": ["https://pedgqakutcltfwsbhpql.supabase.co/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://pedgqakutcltfwsbhpql.supabase.co/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://www.linkedin.com/jobs/*", "https://www.naukri.com/*"],
-      "js": ["lib/roles.js", "lib/signals.js", "lib/matching.js", "lib/jobtext.js", "content.js"],
+      "matches": [
+        "https://www.linkedin.com/*",
+        "https://www.naukri.com/*"
+      ],
+      "js": [
+        "lib/roles.js",
+        "lib/signals.js",
+        "lib/matching.js",
+        "lib/jobtext.js",
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
   ]
 }

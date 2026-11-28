@@ -16,6 +16,7 @@ function showProfile(p) {
   $("refresh").classList.toggle("hide", sample);
   $("sign-out").textContent = sample ? "Stop using the sample" : "Sign out";
   show("signed-in");
+  showSites();
 }
 
 $("form").onsubmit = async (e) => {
@@ -41,6 +42,40 @@ $("refresh").onclick = async () => {
   showProfile(r.data);
   say($("msg2"), "Profile updated.");
 };
+// "Always check jobs on <site>": the site's address is worked out before the click, because Chrome only shows
+// its permission prompt straight from a click.
+const BUILT_IN = /(^|\.)(linkedin|naukri)\.com$/;
+let current = null; // { origin, host, tabId }
+async function showSites() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  let url = null;
+  try { url = tab && new URL(tab.url); } catch {}
+  current = url && url.protocol === "https:" && !BUILT_IN.test(url.hostname) ? { origin: url.origin, host: url.hostname, tabId: tab.id } : null;
+  const r = await ask({ type: "watched-sites" });
+  const sites = (r.ok && r.data) || [];
+  $("site-row").classList.toggle("hide", !current);
+  if (current) { $("site-host").textContent = current.host; $("site-watch").checked = sites.includes(current.origin); }
+  const others = sites.filter((o) => !current || o !== current.origin);
+  $("sites").classList.toggle("hide", !others.length);
+  $("site-list").innerHTML = others.map((o) => `<li><span>${new URL(o).hostname}</span><button class="btn text" data-origin="${o}" type="button">Turn off</button></li>`).join("");
+}
+$("site-list").onclick = async (e) => {
+  const b = e.target.closest("[data-origin]");
+  if (!b) return;
+  await ask({ type: "unwatch-site", origin: b.dataset.origin });
+  showSites();
+};
+$("site-watch").onchange = () => {
+  if (!current) return;
+  if (!$("site-watch").checked) { ask({ type: "unwatch-site", origin: current.origin }).then(showSites); return; }
+  chrome.permissions.request({ origins: [current.origin + "/*"] }, async (granted) => {
+    if (!granted) { $("site-watch").checked = false; return say($("msg2"), "GoodFit wasn't allowed on this site, so it'll only check it when you click Check this page.", true); }
+    const r = await ask({ type: "watch-site", origin: current.origin, tabId: current.tabId });
+    if (!r.ok) { $("site-watch").checked = false; return say($("msg2"), r.error, true); }
+    window.close();
+  });
+};
+
 $("score").onclick = async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab || !/^https?:/.test(tab.url || "")) return say($("msg2"), "Open a job page first.", true);

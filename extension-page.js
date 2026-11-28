@@ -34,7 +34,7 @@ function render() {
   if (!a) {
     card.innerHTML = `<h3>Before you install</h3>
       <ul class="ext-list yes compact">
-        <li>It reads the job you open on LinkedIn and Naukri, and on other pages only when you ask.</li>
+        <li>It reads the job you open on LinkedIn and Naukri, and on other sites only when you ask or turn that site on.</li>
         <li>It scores that job on your computer and sends it nowhere.</li>
         <li>It reads your GoodFit profile to compare, and keeps a copy in the extension until you sign out.</li>
         <li>It never applies, clicks, messages or posts for you.</li>

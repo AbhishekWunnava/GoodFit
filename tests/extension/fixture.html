@@ -17,7 +17,7 @@
      It builds a page shaped like that site, fakes the chrome.* calls content.js uses, then loads the extension's scripts. -->
 <div class="wrap" id="page">
   <div class="bar">Layout:
-    <a href="?site=linkedin">LinkedIn</a><a href="?site=naukri">Naukri</a><a href="?site=jsonld">JobPosting data</a><a href="?site=generic">Any page</a><a href="?site=linkedin&profile=none">Signed out</a><a href="?site=linkedin&spa=1">LinkedIn, switch jobs</a><a href="?site=linkedin&consent=none">Not agreed yet</a>
+    <a href="?site=linkedin">LinkedIn</a><a href="?site=naukri">Naukri</a><a href="?site=jsonld">JobPosting data</a><a href="?site=generic">Any page</a><a href="?site=linkedin&profile=none">Signed out</a><a href="?site=linkedin&spa=1">LinkedIn, switch jobs</a><a href="?site=linkedin-new&spa=1">LinkedIn new layout, switch jobs</a><a href="?site=linkedin&consent=none">Not agreed yet</a><a href="?site=generic&watched=1&spa=1">Turned-on site, switch jobs</a>
   </div>
   <div id="job"></div>
 </div>
@@ -68,6 +68,17 @@ function build(j) {
       <div class="job-details-fit-level-preferences"><span>${esc(j.workMode || "On-site")}</span><span>Full-time</span></div>
       <article class="jobs-description__container"><div class="jobs-box__html-content" id="job-details"><h2>About the job</h2>${html}</div></article></div>`;
   }
+  if (site === "linkedin-new") {
+    // A LinkedIn layout none of the known class names match (LinkedIn renames them often): a job list on the
+    // left and the open job on the right. The extension has to find the job without the site-specific checks.
+    window.__goodfitTestHost = "www.linkedin.com";
+    const card = (t, c) => `<li class="x9f1a"><div class="b7c2"><strong>${esc(t)}</strong><span>${esc(c)}</span><span>Bengaluru, Karnataka, India (Hybrid)</span><span>Easy Apply · Be an early applicant · You'd be a top applicant, experience required</span></div></li>`;
+    return `<div class="k3j9"><ul class="q81z">${card("Product Manager, Growth", "Swiggy")}${card("Senior PM, Lending", "Jupiter")}${card("Product Lead", "Zepto")}</ul>
+      <div class="r5t0"><div class="p2d7"><div class="h6m1"><a href="/company/${esc(j.company.toLowerCase())}/">${esc(j.company)}</a></div>
+      <h1 class="u4e8"><a href="#">${esc(j.title)}</a></h1>
+      <div class="m0n3"><span>${esc(j.location)}</span> · <span>1 week ago</span> · <span>Over 100 people clicked apply</span></div>
+      <div class="z1z1"><h2>About the job</h2><div class="w8w8">${html}</div></div></div></div></div>`;
+  }
   if (site === "naukri") {
     window.__goodfitTestHost = "www.naukri.com";
     return `<section class="styles_job-header-container__abc"><h1 class="styles_jd-header-title__rZwM1">${esc(j.title)}</h1>
@@ -96,10 +107,11 @@ function build(j) {
   document.getElementById("job").innerHTML = build(d.jobs[n]);
   for (const f of ["roles.js", "signals.js", "matching.js", "jobtext.js"]) await load(`../../extension/lib/${f}`);
   await load("../../extension/content.js");
-  if (site === "generic" || site === "jsonld") setTimeout(() => scoreNow(""), 300); // these need the popup button
+  // These need the popup button, unless ?watched=1 (the site was turned on in the popup).
+  if ((site === "generic" || site === "jsonld") && !q.get("watched")) setTimeout(() => scoreNow(""), 300);
   // LinkedIn swaps the job in place when you click another one in the list.
   if (q.get("spa")) setTimeout(() => {
-    history.pushState(null, "", location.pathname + "?site=linkedin&spa=1&currentJobId=167");
+    history.pushState(null, "", location.pathname + `?site=${site}&spa=1&currentJobId=167`);
     document.getElementById("job").innerHTML = build(d.jobs[167]);
   }, 2500);
 })();

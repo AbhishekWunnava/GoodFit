@@ -44,3 +44,11 @@ a { color: var(--peacock); font-weight: 600; }
 .points li b { color: var(--ink); }
 .points li::before { content: ""; position: absolute; left: 3px; top: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--peacock); }
 #not-now { margin-top: 4px; }
+.site-row { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 0; padding: 10px 11px; border: 1px solid var(--mist); border-radius: 9px; cursor: pointer; font-size: 13.5px; }
+.site-row input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--peacock); flex: none; }
+.site-row b { word-break: break-all; }
+.site-row small { display: block; color: var(--soft); font-size: 12px; margin-top: 2px; }
+.sites { margin-top: 10px; font-size: 13px; }
+.sites summary { cursor: pointer; color: var(--soft); font-weight: 600; }
+.sites ul { list-style: none; margin: 6px 0 0; padding: 0; }
+.sites li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 2px 0; }
