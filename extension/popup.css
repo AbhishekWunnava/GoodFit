@@ -39,3 +39,8 @@ input { width: 100%; font: inherit; color: var(--ink); background: var(--card); 
 footer { padding: 10px 16px; border-top: 1px solid var(--mist); background: var(--paper); color: var(--soft); font-size: 11.5px; }
 a { color: var(--peacock); font-weight: 600; }
 .hide { display: none !important; }
+.points { margin: 0 0 12px; padding: 0; list-style: none; display: grid; gap: 9px; font-size: 13.5px; }
+.points li { position: relative; padding-left: 22px; color: var(--soft); }
+.points li b { color: var(--ink); }
+.points li::before { content: ""; position: absolute; left: 3px; top: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--peacock); }
+#not-now { margin-top: 4px; }

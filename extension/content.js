@@ -294,7 +294,18 @@
     catch (e) { res({ ok: false, error: e.message }); }
   });
 
+  // Nothing on the page is read until you've agreed in the popup (first run).
+  const CONSENT_VERSION = 1; // keep in step with popup.js
+  const consented = () => new Promise((res) => {
+    try { chrome.storage.local.get("consent", (v) => res(!!(v && v.consent && v.consent.version >= CONSENT_VERSION))); }
+    catch { res(false); }
+  });
+
   async function update(force, selection) {
+    if (!(await consented())) {
+      if (force) { state.key = null; state.open = true; render(message("Set up GoodFit first", "Click the GoodFit icon in your browser's toolbar and read what the extension does. It won't read any page until you agree.")); }
+      return;
+    }
     const job = readJob(selection, force);
     if (!job) {
       if (force) { state.key = null; state.open = true; render(message("No job description found here", "Open a single job's page, or select the job description text, right-click it and choose <b>Check my fit with GoodFit</b>.")); }
@@ -321,7 +332,8 @@
     if (msg && msg.type === "score") { state.closedFor = null; update(true, msg.selection); }
   });
   chrome.storage.onChanged.addListener((changes) => {
-    if (changes.profile && state.key) { state.key = null; update(!AUTO); }
+    if (changes.consent && !changes.consent.newValue && host) { host.remove(); state.key = null; return; } // withdrawn
+    if ((changes.profile || changes.consent) && (state.key || AUTO)) { state.key = null; update(!AUTO && !!host); }
   });
 
   // LinkedIn and Naukri change the job without loading a new page, so check every second or so.

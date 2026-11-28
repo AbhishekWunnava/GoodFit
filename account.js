@@ -26,8 +26,27 @@ async function init() {
     ["Resume", resume ? esc(resume.file_name) : "None uploaded"],
   ].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
   $("download-resume").classList.toggle("hide", !resume);
+  await showExtension();
   $("loading").classList.add("hide");
   $("content").classList.remove("hide");
+}
+
+// ---------- Browser extension agreement (set on extension.html, kept in preferences.extension) ----------
+async function showExtension() {
+  const [profile] = await rows("profiles");
+  const ext = profile && profile.preferences && profile.preferences.extension;
+  $("ext-status").textContent = ext && ext.agreedAt
+    ? `You agreed to how the GoodFit extension works on ${fmtDate(ext.agreedAt)}. It reads the job you open to score it on your computer, and keeps a copy of your profile in the extension until you sign out of it.`
+    : "You haven't set up the GoodFit extension. It shows your fit score on LinkedIn, Naukri and other job pages.";
+  $("ext-withdraw").classList.toggle("hide", !(ext && ext.agreedAt));
+  $("ext-withdraw").onclick = async () => {
+    const preferences = { ...(profile.preferences || {}) };
+    delete preferences.extension;
+    const { error } = await db.from("profiles").upsert({ user_id: ACC.user.id, details: profile.details || {}, preferences, step: profile.step, updated_at: new Date().toISOString() });
+    if (error) return showMsg($("ext-msg"), "Couldn't save: " + error.message, "err");
+    showMsg($("ext-msg"), "Agreement withdrawn. Also remove the extension from chrome://extensions (or click its icon and Sign out).", "ok");
+    await showExtension();
+  };
 }
 
 // ---------- Download my data ----------

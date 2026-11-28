@@ -17,7 +17,7 @@
      It builds a page shaped like that site, fakes the chrome.* calls content.js uses, then loads the extension's scripts. -->
 <div class="wrap" id="page">
   <div class="bar">Layout:
-    <a href="?site=linkedin">LinkedIn</a><a href="?site=naukri">Naukri</a><a href="?site=jsonld">JobPosting data</a><a href="?site=generic">Any page</a><a href="?site=linkedin&profile=none">Signed out</a><a href="?site=linkedin&spa=1">LinkedIn, switch jobs</a>
+    <a href="?site=linkedin">LinkedIn</a><a href="?site=naukri">Naukri</a><a href="?site=jsonld">JobPosting data</a><a href="?site=generic">Any page</a><a href="?site=linkedin&profile=none">Signed out</a><a href="?site=linkedin&spa=1">LinkedIn, switch jobs</a><a href="?site=linkedin&consent=none">Not agreed yet</a>
   </div>
   <div id="job"></div>
 </div>
@@ -42,7 +42,8 @@ const PROFILE = {
 
 // The parts of chrome.* that content.js uses.
 const listeners = { msg: [], store: [] };
-const mem = {};
+// ?consent=none: the first-run agreement hasn't been given yet.
+const mem = q.get("consent") === "none" ? {} : { consent: { version: 1, agreedAt: "2026-11-28T00:00:00Z" } };
 window.chrome = {
   runtime: {
     lastError: null,

@@ -1,7 +1,8 @@
 // GoodFit extension popup: sign in, try the sample profile, or check the open page.
 const $ = (id) => document.getElementById(id);
 const ask = (msg) => new Promise((res) => chrome.runtime.sendMessage(msg, (r) => res(r || { ok: false, error: chrome.runtime.lastError?.message || "No reply" })));
-const show = (id) => ["loading", "signed-out", "signed-in"].forEach((x) => $(x).classList.toggle("hide", x !== id));
+const show = (id) => ["loading", "consent", "signed-out", "signed-in"].forEach((x) => $(x).classList.toggle("hide", x !== id));
+const TERMS_VERSION = 1; // keep in step with CONSENT_VERSION in content.js and EXT_TERMS_VERSION on extension.html
 const say = (el, text, bad) => { el.textContent = text || ""; el.className = "msg" + (bad ? " err" : ""); };
 
 function showProfile(p) {
@@ -48,4 +49,22 @@ $("score").onclick = async () => {
   window.close();
 };
 
-ask({ type: "get-profile" }).then((r) => showProfile(r.ok ? r.data : null));
+$("agree").onclick = async () => {
+  await chrome.storage.local.set({ consent: { version: TERMS_VERSION, agreedAt: new Date().toISOString() } });
+  start();
+};
+$("not-now").onclick = () => window.close();
+// Withdraw: forget the agreement, the sign-in and the profile copy. The extension then reads nothing until asked again.
+$("withdraw").onclick = async () => {
+  await ask({ type: "sign-out" });
+  await chrome.storage.local.remove("consent");
+  show("consent");
+};
+
+async function start() {
+  const { consent } = await chrome.storage.local.get("consent");
+  if (!consent || consent.version < TERMS_VERSION) return show("consent");
+  const r = await ask({ type: "get-profile" });
+  showProfile(r.ok ? r.data : null);
+}
+start();

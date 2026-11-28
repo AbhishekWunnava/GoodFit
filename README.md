@@ -235,6 +235,13 @@ same scoring code as the website, on the person's own device, with their GoodFit
 their GoodFit email and password, or try a sample profile). It also gives "Product people at <company>" and
 "Recruiters" links (LinkedIn's own people search, 1st and 2nd connections first) and a referral message to edit
 and send themselves. Nothing from the page is sent anywhere.
+- How people get it: the "GoodFit for Chrome" page (`extension.html`, linked from the landing page, a banner on
+  Matches and Your data) explains what it reads, what it never does and each Chrome permission, and asks them to
+  agree (saved as `preferences.extension = { version, agreedAt }`, shown and withdrawable on Your data) before it
+  shows how to install. The extension itself also asks once, in its popup, before it reads any page, and opens
+  that page with a welcome note after install. If what the extension reads changes, bump the version in
+  `extension-page.js`, `extension/popup.js` and `extension/content.js` so everyone agrees again.
+- When it's on the Chrome Web Store, put its address in `config.js` -> `EXTENSION_URL` to show an Add to Chrome button.
 - Try it: Chrome -> `chrome://extensions` -> turn on Developer mode -> Load unpacked -> choose the `extension` folder.
   Pin GoodFit from the puzzle-piece menu, click it, sign in (or "Try with a sample profile") and open a LinkedIn job.
 - After changing `matching.js`, `signals.js`, `roles.js`, `normalize.js` or `config.js`, run
@@ -277,6 +284,7 @@ and send themselves. Nothing from the page is sent anywhere.
   `email-preview.html` shows your email; `scripts/send-reports.mjs` + `.github/workflows/match-emails.yml` send them;
   `supabase-reports.sql` the send log
 - `supabase-jobs.sql` job tables (`job_sources`, `jobs`); `supabase-jobs-schedule.sql` the daily refresh; `supabase-jobs-search.sql` saved searches for the Adzuna job search engine; `supabase-jobs-add-companies.sql` 16 more companies
+- `extension.html` + `extension-page.js` the GoodFit for Chrome page (what it does, permissions, agreement, install)
 - `extension/` the Chrome extension: `manifest.json`, `background.js` (sign-in, profile copy), `content.js` (reads the
   job, scores it, the panel), `popup.*`; `extension/lib/` copies of the scoring code made by `scripts/sync-extension.py`;
   `tests/extension/` test pages that run it without Chrome

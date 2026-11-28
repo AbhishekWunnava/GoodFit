@@ -97,8 +97,10 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   return true; // reply comes later
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   chrome.contextMenus.create({ id: "goodfit-score", title: "Check my fit with GoodFit", contexts: ["page", "selection"] });
+  // First install: open the welcome page, which says to pin the icon, agree and sign in.
+  if (details && details.reason === "install") chrome.tabs.create({ url: `${self.GOODFIT.SITE_URL}/extension.html?installed=1` });
 });
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "goodfit-score" && tab && tab.id != null) scoreTab(tab.id, info.selectionText).catch((e) => console.warn("GoodFit:", e.message));

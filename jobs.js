@@ -544,6 +544,17 @@ async function init() {
   renderFilters();
   setView();
   Agent.mount();
+  extensionPromo();
+}
+
+// A one-line pointer to GoodFit for Chrome, until you've agreed to it or closed this.
+function extensionPromo() {
+  const key = "goodfit_ext_promo_closed";
+  let closed = false;
+  try { closed = localStorage.getItem(key) === "1"; } catch {}
+  if (closed || (J.prefs.extension && J.prefs.extension.agreedAt)) return;
+  $("ext-promo").classList.remove("hide");
+  $("ext-promo-x").onclick = () => { $("ext-promo").classList.add("hide"); try { localStorage.setItem(key, "1"); } catch {} };
 }
 
 $("sort").onchange = () => { J.sort = $("sort").value; J.page = 1; remember(); renderList(); };

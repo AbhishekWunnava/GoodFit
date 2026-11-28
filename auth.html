@@ -96,8 +96,15 @@ $("pw-toggle").onclick = () => {
 };
 render();
 
-// Already logged in? Go straight to the dashboard.
-if (db) db.auth.getSession().then(({ data }) => { if (data.session) location.href = "dashboard.html"; });
+// After logging in, go back to the page that sent you here (?next=extension.html#setup), else the dashboard.
+// Only plain GoodFit page names are accepted, never another site.
+const nextPage = (() => {
+  const n = new URLSearchParams(location.search).get("next") || "";
+  return /^[a-z-]+\.html(#[a-z-]+)?$/.test(n) ? n : "dashboard.html";
+})();
+
+// Already logged in? Go straight on.
+if (db) db.auth.getSession().then(({ data }) => { if (data.session) location.href = nextPage; });
 
 $("form").onsubmit = async (e) => {
   e.preventDefault();
@@ -120,7 +127,7 @@ $("form").onsubmit = async (e) => {
   } else {
     const { error } = await db.auth.signInWithPassword({ email, password });
     if (error) showMsg($("msg"), error.message, "err");
-    else location.href = "dashboard.html";
+    else location.href = nextPage;
   }
   $("submit").disabled = false;
 };
